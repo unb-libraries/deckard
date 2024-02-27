@@ -1,0 +1,44 @@
+api:
+  host: '127.0.0.1'
+  port: 5000
+  llm:
+    model:
+      type: "llama"
+      repo: "TheBloke/Nous-Hermes-Llama2-GGUF"
+      filename: "nous-hermes-llama2-13b.Q6_K.gguf"
+      max_response_tokens: 1024
+      n_batch: 2048
+      n_ctx: 4096
+      n_gpu_layers: -1
+      repeat_penalty: 1.176
+      temperature: 0.71
+      top_k: 40
+      top_p: 0.1
+      verbose: True
+data_dir: '/home/core/llm/chatbot/data'
+workflows:
+  libpages:
+    name: 'libpages'
+    rag:
+      context_size: 4096
+      max_context_distance: 1.0
+      context_builder:
+        class: 'SimpleContextAggregator'
+    collectors:
+      -
+        name: 'Library Pages'
+        class: 'LibPagesCollector'
+        output: 'collector/libpages/data/output'
+    chunker:
+      class: 'StandardChunker'
+      size: 512
+      overlap: 128
+    transformer:
+      class: 'StandardTransformer'
+      model: 'all-mpnet-base-v1'
+    database:
+      class: 'LanceDB'
+      name: 'libpages'
+    context_database:
+      class: 'SQLite'
+      name: 'libpages'
