@@ -73,20 +73,20 @@ def get_workflow_context_db(id, log, create_if_not_exists=False):
     dc = getattr(m, w['context_database']['class'])
     return dc(w['context_database']['name'], log, create_if_not_exists)
 
-def get_workflow_transformer(id, log):
+def get_workflow_encoder(id, log):
     w = get_workflow(id)
     if w is None:
         return None
     m = __import__(
-        'datatransformers.' +
-            w['transformer']['class'],
+        'encoders.' +
+            w['embedding_encoder']['class'],
         fromlist=['']
     )
-    tc = getattr(m, w['transformer']['class'])
+    tc = getattr(m, w['embedding_encoder']['class'])
     return tc(
-        w['transformer']['model'],
+        w['embedding_encoder']['model'],
         log
-    ).get()
+    )
 
 def get_workflow_chunker(id, log):
     w = get_workflow(id)
@@ -111,3 +111,30 @@ def get_workflow_rag_context_builder(id, log):
     )
     cb = getattr(m, w['rag']['context_builder']['class'])
     return cb(log)
+
+def get_workflow_rag_reranker(id, log):
+    w = get_workflow(id)
+    if w is None:
+        return None
+    m = __import__(
+        'encoders.' +
+            w['rag']['reranker']['class'],
+        fromlist=['']
+    )
+    tc = getattr(m, w['rag']['reranker']['class'])
+    return tc(
+        w['rag']['reranker']['model'],
+        log
+    )
+
+def get_workflow_query_processor(id, query, log):
+    w = get_workflow(id)
+    if w is None:
+        return None
+    m = __import__(
+        'queryprocessors.' +
+            w['rag']['query_processor']['class'],
+        fromlist=['']
+    )
+    qp = getattr(m, w['rag']['query_processor']['class'])
+    return qp(query, log)

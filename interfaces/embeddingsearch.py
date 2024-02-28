@@ -5,7 +5,7 @@ import sys
 from interfaces.api import get_api_uri, check_api_server_exit
 
 from core.config import get_workflow
-from core.config import get_workflow_transformer
+from core.config import get_workflow_encoder
 from core.config import get_workflows
 from core.logger import get_logger
 

@@ -1,10 +1,12 @@
-from core.config import get_workflow_db
-from core.config import get_workflow_context_db
-from core.config import get_workflow_transformer
-from core.config import get_workflow_context_rag_conf
-from core.config import get_workflow_rag_context_builder
 from core.config import get_api_llm_config
 from core.config import get_workflow
+from core.config import get_workflow_context_db
+from core.config import get_workflow_context_rag_conf
+from core.config import get_workflow_db
+from core.config import get_workflow_query_processor
+from core.config import get_workflow_rag_context_builder
+from core.config import get_workflow_rag_reranker
+from core.config import get_workflow_encoder
 
 class RagStack:
     MAX_CONTEXTS = 25
@@ -13,8 +15,8 @@ class RagStack:
     def __init__(self, workflow_id, log, only_context = True):
         self.log = log
         self.log.info(f"Building RAG Stack for workflow: {workflow_id}")
-
-        self.transformer = get_workflow_transformer(workflow_id, log)
+        self.encoder = get_workflow_encoder(workflow_id, log)
+        self.reranker = get_workflow_rag_reranker(workflow_id, log)
         self.database = get_workflow_db(workflow_id, log)
         self.context_database = get_workflow_context_db(workflow_id, log)
         self.context_builder = get_workflow_rag_context_builder(workflow_id, log)
@@ -36,8 +38,11 @@ class RagStack:
         self.query_value = query
         self.chain = chain
 
-        self.log.info(f"Generating embedding for query: {query} [{self.workflow_id}]")
-        query_vector = self.transformer.encode(query)
+        query_processor = get_workflow_query_processor(self.workflow_id, query, self.log)
+        embedding_query = query_processor.getEmbeddingSearchQuery()
+
+        self.log.info(f"Generating embedding for query: {query} ({embedding_query}) [{self.workflow_id}]")
+        query_vector = self.encoder.encode(embedding_query)
 
         self.log.info(f"Querying Vector Database with embeddings: {query} [{self.workflow_id}]")
         vec_results = self.database.query(
@@ -46,15 +51,17 @@ class RagStack:
             max_distance=self.context_max_distance,
         )
 
+        self.log.info(f"Reranking Results: {query} ({embedding_query}) [{self.workflow_id}]")
+        reranked_results = self.reranker.rerank(embedding_query, vec_results)
+
         self.log.info(f"Generating context for query: {query} [{self.workflow_id}]")
         self.context, context_metadata = self.context_builder.buildContext(
-            vec_results,
+            reranked_results,
             self.context_database,
             self.context_size
         )
 
-        vec_results = vec_results.drop(columns=['vector'])
-        self.response_metadata.append({'vector_results': vec_results.to_dict()})
+        self.response_metadata.append({'vector_results': reranked_results.to_dict()})
         self.response_metadata.append(context_metadata)
         self.addWorkflowConfigToResponseMetadata()
 
@@ -70,7 +77,7 @@ class RagStack:
 
     def search(self, query):
         self.log.info(f"Generating embedding for query: {query} [{self.workflow_id}]")
-        query_vector = self.transformer.encode(query)
+        query_vector = self.encoder.encode(query)
 
         self.log.info(f"Querying Vector Database with embeddings: {query} [{self.workflow_id}]")
         vec_results = self.database.query(

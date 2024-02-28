@@ -5,10 +5,11 @@ from core.config import get_workflow_chunker
 from core.config import get_workflow_collectors
 from core.config import get_workflow_db
 from core.config import get_workflow_context_db
-from core.config import get_workflow_transformer
+from core.config import get_workflow_encoder
 from core.config import get_workflows
 from core.config import get_workflow
 from core.logger import get_logger
+from core.utils import clear_gpu_memory
 from secrets import token_hex
 
 CMD_STRING = 'build:rag'
@@ -21,7 +22,7 @@ def start(args=sys.argv):
     log.info(f"Building Endpoint {workflow['name']}")
 
     chunker = get_workflow_chunker(workflow['name'], log)
-    sentence_transformer = get_workflow_transformer(workflow['name'], log)
+    sentence_encoder = get_workflow_encoder(workflow['name'], log)
     vector_database = get_workflow_db(workflow['name'], log)
     vector_database.flushData()
     context_database = get_workflow_context_db(workflow['name'], log, True)
@@ -60,7 +61,8 @@ def start(args=sys.argv):
             if len(document['chunks']) > 0:
                 document['embeddings'] = []
                 for chunk in document['chunks']:
-                    document['embeddings'].append(sentence_transformer.encode(chunk))
+                    clear_gpu_memory()
+                    document['embeddings'].append(sentence_encoder.encode(chunk))
 
                 embedding_id = vector_database.addEmbeddings(
                     document,

@@ -24,6 +24,12 @@ workflows:
       max_context_distance: 1.0
       context_builder:
         class: 'SimpleContextAggregator'
+      query_processor:
+        class: 'StandardQueryProcessor'
+      reranker:
+        class: 'SentenceTransformerEncoder'
+        model: 'BAAI/bge-reranker-large'
+        n_results: 5
     collectors:
       -
         name: 'Library Pages'
@@ -33,9 +39,9 @@ workflows:
       class: 'StandardChunker'
       size: 1024
       overlap: 128
-    transformer:
-      class: 'StandardTransformer'
-      model: 'sentence-transformers/all-MiniLM-L12-v2'
+    embedding_encoder:
+      class: 'SentenceTransformerEncoder'
+      model: 'avsolatorio/GIST-large-Embedding-v0'
     database:
       class: 'LanceDB'
       name: 'libpages'

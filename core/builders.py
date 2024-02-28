@@ -1,5 +1,5 @@
 from core.config import get_workflow_db
-from core.config import get_workflow_transformer
+from core.config import get_workflow_encoder
 from core.config import get_workflows
 from core.prompts import CONTEXT_ONLY_PROMPT
 from core.prompts import CONTEXT_PLUS_PROMPT
@@ -14,11 +14,11 @@ def build_query_stacks(log):
         stacks[w['name']] = RagStack(w['name'], log)
     return stacks
 
-def build_rag_transformers(log):
+def build_rag_encoders(log):
     transformers = {}
     workflows = get_workflows()
     for w in workflows.values():
-        transformer = get_workflow_transformer(w['name'], log)
+        transformer = get_workflow_encoder(w['name'], log)
         transformers[w['name']] = transformer
     return transformers
 
