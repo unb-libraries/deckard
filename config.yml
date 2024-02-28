@@ -22,6 +22,10 @@ workflows:
     rag:
       context_size: 4096
       max_context_distance: 1.0
+      chunker:
+        class: 'StandardChunker'
+        size: 1024
+        overlap: 128
       context_builder:
         class: 'SimpleContextAggregator'
       query_processor:
@@ -35,10 +39,6 @@ workflows:
         name: 'Library Pages'
         class: 'LibPagesCollector'
         output: 'collector/libpages/data/output'
-    chunker:
-      class: 'StandardChunker'
-      size: 1024
-      overlap: 128
     embedding_encoder:
       class: 'SentenceTransformerEncoder'
       model: 'avsolatorio/GIST-large-Embedding-v0'

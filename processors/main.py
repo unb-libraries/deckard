@@ -54,8 +54,8 @@ def start(args=sys.argv):
                 document_content,
                 metadata,
                 "\n",
-                workflow['chunker']['size'],
-                workflow['chunker']['overlap'],
+                workflow['rag']['chunker']['size'],
+                workflow['rag']['chunker']['overlap'],
             )
 
             if len(document['chunks']) > 0:

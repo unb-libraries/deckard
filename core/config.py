@@ -94,10 +94,10 @@ def get_workflow_chunker(id, log):
         return None
     m = __import__(
         'chunkers.' +
-            w['chunker']['class'],
+            w['rag']['chunker']['class'],
         fromlist=['']
     )
-    cc = getattr(m, w['chunker']['class'])
+    cc = getattr(m, w['rag']['chunker']['class'])
     return cc(log)
 
 def get_workflow_rag_context_builder(id, log):

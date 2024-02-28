@@ -13,7 +13,7 @@ class StandardChunker:
         'output'
     )
 
-    def __init__(self, log):
+    def __init__(self, log) -> None:
         self.log = log
 
     def generate(
