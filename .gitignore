@@ -42,3 +42,4 @@ poetry/core/*
 
 data/*
 poetry.lock
+scripts/slackbot.sh
