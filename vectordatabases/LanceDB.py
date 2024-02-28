@@ -1,4 +1,3 @@
-import json
 import lancedb
 import os
 import pyarrow as pa
@@ -6,7 +5,6 @@ import sys
 
 from core.config import get_data_dir
 from lance.vector import vec_to_table
-from secrets import token_hex
 
 class LanceDB:
     EMBEDDINGS_TABLE_NAME = "llm_embeddings"

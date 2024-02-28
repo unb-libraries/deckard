@@ -47,15 +47,15 @@ class RagStack:
         )
 
         self.log.info(f"Generating context for query: {query} [{self.workflow_id}]")
-        self.context = self.context_builder.buildContext(
+        self.context, context_metadata = self.context_builder.buildContext(
             vec_results,
             self.context_database,
             self.context_size
         )
 
         vec_results = vec_results.drop(columns=['vector'])
-        self.response_metadata.append(vec_results.to_dict())
-        self.response_metadata.append({'rag_context': self.context, 'rag_context_length': len(self.context)})
+        self.response_metadata.append({'vector_results': vec_results.to_dict()})
+        self.response_metadata.append(context_metadata)
         self.addWorkflowConfigToResponseMetadata()
 
         if self.context == '' and self.only_context:

@@ -31,11 +31,11 @@ workflows:
         output: 'collector/libpages/data/output'
     chunker:
       class: 'StandardChunker'
-      size: 512
+      size: 1024
       overlap: 128
     transformer:
       class: 'StandardTransformer'
-      model: 'all-mpnet-base-v1'
+      model: 'sentence-transformers/all-MiniLM-L12-v2'
     database:
       class: 'LanceDB'
       name: 'libpages'
