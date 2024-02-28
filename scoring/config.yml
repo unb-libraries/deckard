@@ -21,8 +21,18 @@ tests:
       verbose: True
   rag_configurations:
     -
-      context_size: 4096
-      max_context_distance: 1.0
+    rag:
+      name: 'libpages'
+      stack:
+        class: 'RagStack'
+      collectors:
+        -
+          name: 'Library Pages'
+          class: 'LibPagesCollector'
+          output: 'collector/libpages/data/output'
+      context:
+        size: 4096
+        max_vector_distance: 1.0
       chunker:
         class: 'StandardChunker'
         size: 1024

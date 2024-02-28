@@ -12,11 +12,20 @@ def start():
     )
     tests.run()
 
+
 class RagTester:
     def __init__(self, log, config):
         self.log = log
 
     def run(self):
-        self.log.info("Running tests...")
+
 
         self.log.info("Tests complete.")
+
+    def getRagStack(self, config, log):
+        c = __import__(
+            'core.' + config['stack']['class'],
+            fromlist=['']
+        )
+        rs = getattr(c, config['stack']['class'])
+        return rs(config['rag'], log)

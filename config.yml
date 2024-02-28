@@ -23,6 +23,11 @@ workflows:
       name: 'libpages'
       stack:
         class: 'RagStack'
+      collectors:
+        -
+          name: 'Library Pages'
+          class: 'LibPagesCollector'
+          output: 'collector/libpages/data/output'
       context:
         size: 4096
         max_vector_distance: 1.0
@@ -47,8 +52,4 @@ workflows:
         class: 'SentenceTransformerEncoder'
         model: 'BAAI/bge-reranker-large'
         n_results: 5
-    collectors:
-      -
-        name: 'Library Pages'
-        class: 'LibPagesCollector'
-        output: 'collector/libpages/data/output'
+

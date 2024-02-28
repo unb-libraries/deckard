@@ -36,19 +36,6 @@ def get_workflow_context_rag_conf(id):
         return None
     return w['rag']
 
-def get_workflow_collectors(id, log):
-    w = get_workflow(id)
-    if w is None:
-        return None
-    for c in w['collectors']:
-        m = __import__(
-            'collectors.' +
-                c['class'],
-            fromlist=['']
-        )
-        cc = getattr(m, c['class'])
-        yield cc(log)
-
 def get_workflow_db(id, log, create_if_not_exists=False):
     w = get_workflow(id)
     if w is None:
