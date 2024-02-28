@@ -9,11 +9,12 @@ class LLMQuery:
     FAIL_RESPONSE_MESSAGE = fail_response()
     ERROR_RESPONSE_MESSAGE = error_response()
 
-    def __init__(self, stack, id, client):
+    def __init__(self, stack, id, client, llm_config):
         self.stack = stack
         self.log = stack.logger()
         self.workflow_id = id
         self.client = client
+        self.llm_config = llm_config
         self.initQuery()
 
     def query(self, query, chain, start_time, lock_wait, safeguard = True):
@@ -25,7 +26,7 @@ class LLMQuery:
 
         self.query_value = query
         self.log.info(f"Querying LLM: [{self.workflow_id}]")
-        stack_response = self.stack.query(query, chain)
+        stack_response = self.stack.query(query, chain, self.llm_config)
         self.response_metadata.append(self.stack.getResponseMetadata())
 
         if self.stack.getResponseFail():

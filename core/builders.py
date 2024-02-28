@@ -7,11 +7,17 @@ from core.RagStack import RagStack
 from langchain.chains import LLMChain
 from langchain.prompts import PromptTemplate
 
-def build_query_stacks(log):
+def build_rag_stacks(log):
     stacks = {}
     workflows = get_workflows()
     for w in workflows.values():
-        stacks[w['name']] = RagStack(w['name'], log)
+        c = __import__(
+            'core.' +
+                w['rag']['stack']['class'],
+            fromlist=['']
+        )
+        rs = getattr(c, w['rag']['stack']['class'])
+        stacks[w['name']] = rs(w['rag'], log)
     return stacks
 
 def build_rag_encoders(log):

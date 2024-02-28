@@ -1,6 +1,8 @@
 class RawQueryProcessor:
-    def __init__(self, query, log):
+    def __init__(self, log):
         self.log = log
+
+    def setQuery(self, query):
         self.query = query
 
     def getEmbeddingSearchQuery(self):

@@ -20,10 +20,12 @@ workflows:
   libpages:
     name: 'libpages'
     rag:
+      name: 'libpages'
       stack:
         class: 'RagStack'
-      context_size: 4096
-      max_context_distance: 1.0
+      context:
+        size: 4096
+        max_vector_distance: 1.0
       chunker:
         class: 'StandardChunker'
         size: 1024

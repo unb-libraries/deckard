@@ -3,7 +3,7 @@ import socket
 import sys
 
 from core.builders import build_llm_chains
-from core.builders import build_query_stacks
+from core.builders import build_rag_stacks
 from core.config import get_api_host
 from core.config import get_api_llm_config
 from core.config import get_api_port
@@ -65,12 +65,13 @@ def libpages_query():
 
     # @TODO: Error handling for missing endpoint.
 
-    stack = current_app.config['querystacks'][endpoint_value]
+    stack = current_app.config['rag_stacks'][endpoint_value]
 
     query = LLMQuery(
         stack,
         endpoint_value,
-        data.get('client')
+        data.get('client'),
+        get_api_llm_config()
     )
     now = cur_timestamp()
     with gpu_lock:
@@ -88,10 +89,8 @@ def db_search_query():
     data = request.json
     query_value = data.get('query')
     endpoint_value = data.get('endpoint')
-
     # @TODO: Error handling for missing endpoint.
-
-    stack = current_app.config['querystacks'][endpoint_value]
+    stack = current_app.config['rag_stacks'][endpoint_value]
 
     with gpu_lock:
         return result_wrapper(
@@ -110,7 +109,7 @@ def start():
     app.config['chains'] = build_llm_chains(app, llm)
 
     log.info("Building Query Stacks...")
-    app.config['querystacks'] = build_query_stacks(log)
+    app.config['rag_stacks'] = build_rag_stacks(log)
 
     report_memory_use(log)
     log.info("Starting API server...")
