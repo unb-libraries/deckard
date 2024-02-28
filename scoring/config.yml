@@ -1,6 +1,10 @@
-api:
-  host: '127.0.0.1'
-  port: 5000
+tests:
+  questions:
+    - question: "What is the capital of France?"
+      answer: "Paris"
+    - question: "What is the capital of Germany?"
+      answer: "Berlin"
+  output: "test_output.json"
   llm:
     model:
       type: "llama"
@@ -15,13 +19,8 @@ api:
       top_k: 40
       top_p: 0.1
       verbose: True
-data_dir: '/home/core/llm/chatbot/data'
-workflows:
-  libpages:
-    name: 'libpages'
-    rag:
-      stack:
-        class: 'RagStack'
+  rag_configurations:
+    -
       context_size: 4096
       max_context_distance: 1.0
       chunker:
@@ -45,8 +44,3 @@ workflows:
         class: 'SentenceTransformerEncoder'
         model: 'BAAI/bge-reranker-large'
         n_results: 5
-    collectors:
-      -
-        name: 'Library Pages'
-        class: 'LibPagesCollector'
-        output: 'collector/libpages/data/output'

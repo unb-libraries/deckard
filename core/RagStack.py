@@ -12,15 +12,17 @@ class RagStack:
     MAX_CONTEXTS = 25
     NO_CONTEX_RESPONSE = "Sorry, this question doesn't seem to be answered within the information I was provided."
 
-    def __init__(self, workflow_id, log, only_context = True):
+    def __init__(self, workflow_id, log, only_context=False):
         self.log = log
         self.log.info(f"Building RAG Stack for workflow: {workflow_id}")
+
         self.encoder = get_workflow_encoder(workflow_id, log)
         self.reranker = get_workflow_rag_reranker(workflow_id, log)
         self.database = get_workflow_db(workflow_id, log)
         self.context_database = get_workflow_context_db(workflow_id, log)
         self.context_builder = get_workflow_rag_context_builder(workflow_id, log)
         rag_conf = get_workflow_context_rag_conf(workflow_id)
+
         self.context_size = rag_conf['context_size']
         self.context_max_distance = float(rag_conf['max_context_distance'])
         self.workflow_id = workflow_id
@@ -61,6 +63,7 @@ class RagStack:
             self.context_size
         )
 
+        self.response_metadata.append({'embedding_query': embedding_query})
         self.response_metadata.append({'vector_results': reranked_results.to_dict()})
         self.response_metadata.append(context_metadata)
         self.addWorkflowConfigToResponseMetadata()

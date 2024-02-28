@@ -55,11 +55,11 @@ def get_workflow_db(id, log, create_if_not_exists=False):
         return None
     m = __import__(
         'vectordatabases.' +
-            w['database']['class'],
+            w['rag']['embedding_database']['class'],
         fromlist=['']
     )
-    dc = getattr(m, w['database']['class'])
-    return dc(w['database']['name'], log, create_if_not_exists)
+    dc = getattr(m, w['rag']['embedding_database']['class'])
+    return dc(w['rag']['embedding_database']['name'], log, create_if_not_exists)
 
 def get_workflow_context_db(id, log, create_if_not_exists=False):
     w = get_workflow(id)
@@ -67,11 +67,11 @@ def get_workflow_context_db(id, log, create_if_not_exists=False):
         return None
     m = __import__(
         'contextdatabases.' +
-            w['context_database']['class'],
+            w['rag']['context_database']['class'],
         fromlist=['']
     )
-    dc = getattr(m, w['context_database']['class'])
-    return dc(w['context_database']['name'], log, create_if_not_exists)
+    dc = getattr(m, w['rag']['context_database']['class'])
+    return dc(w['rag']['context_database']['name'], log, create_if_not_exists)
 
 def get_workflow_encoder(id, log):
     w = get_workflow(id)
@@ -79,12 +79,12 @@ def get_workflow_encoder(id, log):
         return None
     m = __import__(
         'encoders.' +
-            w['embedding_encoder']['class'],
+            w['rag']['embedding_encoder']['class'],
         fromlist=['']
     )
-    tc = getattr(m, w['embedding_encoder']['class'])
+    tc = getattr(m, w['rag']['embedding_encoder']['class'])
     return tc(
-        w['embedding_encoder']['model'],
+        w['rag']['embedding_encoder']['model'],
         log
     )
 
