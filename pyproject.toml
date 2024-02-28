@@ -26,6 +26,7 @@ slack-sdk = "3.27.0"
 [tool.poetry.scripts]
 "api:start" = "interfaces.api:start"
 "build:rag" = "processors.main:start"
+"evaluate" = "scoring.evaluate:start"
 "query:llm" = "interfaces.llmdirectquery:query"
 "query:rag" = "interfaces.ragquery:query"
 "search:embeddings" = "interfaces.embeddingsearch:search"

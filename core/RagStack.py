@@ -1,6 +1,5 @@
 from core.classloader import load_class
 
-
 class RagStack:
     MAX_CONTEXTS = 25
     NO_CONTEX_RESPONSE = "Sorry, this question doesn't seem to be answered within the information I was provided."

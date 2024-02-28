@@ -1,9 +1,10 @@
-tests:
-  questions:
-    - question: "What is the capital of France?"
-      answer: "Paris"
-    - question: "What is the capital of Germany?"
-      answer: "Berlin"
+evaluate:
+  report: "test_report.json"
+  test_queries:
+    - query: "What is the capital of France?"
+      expected_answer: "Paris"
+    - query: "What is the capital of Germany?"
+      expected_answer: "Berlin"
   output: "test_output.json"
   llm:
     model:
@@ -21,7 +22,6 @@ tests:
       verbose: True
   rag_configurations:
     -
-    rag:
       name: 'libpages'
       stack:
         class: 'RagStack'
