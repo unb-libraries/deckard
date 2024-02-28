@@ -1,10 +1,11 @@
 evaluate:
+  input: "test_input.spintax"
   report: "test_report.json"
   test_queries:
     - query: "What is the capital of France?"
-      expected_answer: "Paris"
-    - query: "What is the capital of Germany?"
-      expected_answer: "Berlin"
+      expected: "Sorry, this question doesn't seem to be answered"
+    - query: "Where are the bathrooms?"
+      expected: "Floor"
   output: "test_output.json"
   llm:
     model:

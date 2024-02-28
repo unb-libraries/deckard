@@ -22,6 +22,7 @@ requests = "2.31.0"
 sentence_transformers = "2.3.1"
 slack-bolt = "1.18.1"
 slack-sdk = "3.27.0"
+spintax = "1.0.4"
 
 [tool.poetry.scripts]
 "api:start" = "interfaces.api:start"
