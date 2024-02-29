@@ -1,3 +1,4 @@
+import dictdiffer
 import itertools
 import json
 import re
@@ -11,6 +12,7 @@ from core.prompts import CONTEXT_ONLY_PROMPT
 from core.RagBuilder import RagBuilder
 from pandas import DataFrame
 from secrets import token_hex
+from core.utils import clear_gpu_memory
 
 def start():
     log = get_logger()
@@ -35,13 +37,15 @@ class RagTester:
 
         llm = LLM(self.log, self.config['llm']['model']).get()
         prompt = CONTEXT_ONLY_PROMPT()
-        chain = build_llm_chain(
-            llm,
-            prompt
-        )
+
 
         reporter = RagReporter(self.config, self.log)
         for rag_configuration in rag_configs:
+            chain = build_llm_chain(
+                llm,
+                prompt
+            )
+
             configuration_id = token_hex(32)
             score = 0
             self.log.info(f"Building RAG data: {rag_configuration['name']}")
@@ -92,11 +96,22 @@ class RagTester:
                 score,
                 {
                     "llm": self.config['llm']['model'],
-                    "config": rag_configuration,
                     "prompt": prompt,
                     "responses": question_responses
                 }
             )
+            reporter.addConfiguration(
+                configuration_id,
+                rag_configuration,
+                score
+            )
+
+            # Clean up
+            del(builder)
+            del(rag_stack)
+            del(chain)
+            clear_gpu_memory()
+
         reporter.writeReport()
         self.log.info("Tests complete.")
 
@@ -113,6 +128,7 @@ class RagReporter:
     def __init__(self, config, log):
         self.log = log
         self.config = config
+        self.configurations = {}
         self.scoreboard = DataFrame(
             [],
             columns=['id', 'name', 'score']
@@ -125,6 +141,11 @@ class RagReporter:
             [],
             columns=['id', 'name', 'score', 'data']
         )
+    def addConfiguration(self, id, config, score):
+        self.configurations[id] = {
+            'configuration': config,
+            'score': score
+        }
 
     def addScoreboardItem(self, id, name, score):
         self.scoreboard.loc[len(self.scoreboard.index)] = [id, name, score]
@@ -136,15 +157,54 @@ class RagReporter:
         self.details.loc[len(self.details.index)] = [id, name, score, data]
 
     def writeReport(self):
+        self.log.info("Analyzing Configurations Changes...")
+        self.analyzeConfigurations()
         self.log.info("Writing report...")
         final_report = {
             "scoreboard": self.scoreboard.sort_values(by=["score"], ascending=False).to_dict(orient='records'),
+            "parameters": self.param_analysis,
             "summaries": self.summaries.sort_values(by=["score"], ascending=False).to_dict(orient='records'),
-            "details": self.details.sort_values(by=["score"], ascending=False).to_dict(orient='records')
+            "details": self.details.sort_values(by=["score"], ascending=False).to_dict(orient='records'),
+            "configurations": self.configurations,
+            "analysis": self.analysis
         }
         with open(self.config['report'], 'w') as f:
             f.write(json.dumps(final_report, indent=4))
 
+    def analyzeConfigurations(self):
+        self.log.info("Analyzing configurations...")
+        self.analysis = {}
+        variance_scores = {}
+        last_config = None
+        add_previous = True
+        for config in self.configurations.values():
+            if not last_config is None:
+                for diff in list(dictdiffer.diff(config['configuration'], last_config['configuration'])):
+                    config_element = diff[1]
+                    if not config_element in variance_scores.keys():
+                        variance_scores[config_element] = {}
+
+                    config_value = list(diff[2])[1]
+                    if not config_value in variance_scores[config_element].keys():
+                        variance_scores[config_element][config_value] = {
+                            "avg_score": 0,
+                            "scores": [],
+                        }
+                    variance_scores[config_element][config_value]["scores"].append(config['score'])
+                    variance_scores[config_element][config_value]["avg_score"] = sum(variance_scores[config_element][config_value]["scores"]) / len(variance_scores[config_element][config_value]["scores"])
+
+                    if add_previous:
+                        config_value = list(diff[2])[0]
+                        if not config_value in variance_scores[config_element].keys():
+                            variance_scores[config_element][config_value] = {
+                                "avg_score": 0,
+                                "scores": [],
+                            }
+                        variance_scores[config_element][config_value]["scores"].append(last_config['score'])
+                        variance_scores[config_element][config_value]["avg_score"] = sum(variance_scores[config_element][config_value]["scores"]) / len(variance_scores[config_element][config_value]["scores"])
+                        add_previous = False
+            last_config = config
+        self.param_analysis = variance_scores
 
 class RagConfigGenerator:
     def __init__(self, filepath, log):

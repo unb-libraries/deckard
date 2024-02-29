@@ -11,7 +11,7 @@ context:
     max_vector_distance: 1.0
 chunker:
     class: StandardChunker
-    size: 1024
+    size: {512|1024|2048}
     overlap: 128
 context_builder:
     class: 'SimpleContextAggregator'
@@ -25,7 +25,7 @@ embedding_encoder:
     class: 'SentenceTransformerEncoder'
     model: 'avsolatorio/GIST-large-Embedding-v0'
 query_processor:
-    class: 'StandardQueryProcessor'
+    class: {'StandardQueryProcessor'|'RawQueryProcessor'}
 reranker:
     class: 'SentenceTransformerEncoder'
     model: 'BAAI/bge-reranker-large'

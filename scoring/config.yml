@@ -6,6 +6,8 @@ evaluate:
       expected: "Sorry, this question doesn't seem to be answered"
     - query: "Where are the bathrooms?"
       expected: "Floor"
+    - query: "Who is the dean of UNB Libraries?"
+      expected: "Balcom"
   output: "test_output.json"
   llm:
     model:
@@ -21,37 +23,3 @@ evaluate:
       top_k: 40
       top_p: 0.1
       verbose: True
-  rag_configurations:
-    -
-      name: 'libpages'
-      stack:
-        class: 'RagStack'
-      collectors:
-        -
-          name: 'Library Pages'
-          class: 'LibPagesCollector'
-          output: 'collector/libpages/data/output'
-      context:
-        size: 4096
-        max_vector_distance: 1.0
-      chunker:
-        class: 'StandardChunker'
-        size: 1024
-        overlap: 128
-      context_builder:
-        class: 'SimpleContextAggregator'
-      context_database:
-        class: 'SQLite'
-        name: 'libpages'
-      embedding_database:
-        class: 'LanceDB'
-        name: 'libpages'
-      embedding_encoder:
-        class: 'SentenceTransformerEncoder'
-        model: 'avsolatorio/GIST-large-Embedding-v0'
-      query_processor:
-        class: 'StandardQueryProcessor'
-      reranker:
-        class: 'SentenceTransformerEncoder'
-        model: 'BAAI/bge-reranker-large'
-        n_results: 5
