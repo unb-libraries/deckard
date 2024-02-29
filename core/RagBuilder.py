@@ -69,7 +69,7 @@ class RagBuilder:
     def initComponents(self):
         self.encoder = load_class(
             'encoders',
-            self.config['embedding_encoder']['class'],
+            self.config['embedding_encoder']['classname'],
             [
                 self.config['embedding_encoder']['model'],
                 self.log
@@ -77,7 +77,7 @@ class RagBuilder:
         )
         self.database = load_class(
             'vectordatabases',
-            self.config['embedding_database']['class'],
+            self.config['embedding_database']['classname'],
             [
                 self.config['embedding_database']['name'],
                 self.log,
@@ -86,7 +86,7 @@ class RagBuilder:
         )
         self.context_database = load_class(
             'contextdatabases',
-            self.config['context_database']['class'],
+            self.config['context_database']['classname'],
             [
                 self.config['context_database']['name'],
                 self.log,
@@ -96,7 +96,7 @@ class RagBuilder:
 
         self.chunker = load_class(
             'chunkers',
-            self.config['chunker']['class'],
+            self.config['chunker']['classname'],
             [
                 self.log
             ]
@@ -107,7 +107,7 @@ class RagBuilder:
             self.collectors.append(
                 load_class(
                     'collectors',
-                    collector['class'],
+                    collector['classname'],
                     [
                         self.log
                     ]

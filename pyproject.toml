@@ -23,6 +23,7 @@ sentence_transformers = "2.3.1"
 slack-bolt = "1.18.1"
 slack-sdk = "3.27.0"
 dictdiffer = "0.9.0"
+python-box = "7.1.1"
 
 [tool.poetry.scripts]
 "api:start" = "interfaces.api:start"

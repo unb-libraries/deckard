@@ -22,34 +22,34 @@ workflows:
     rag:
       name: 'libpages'
       stack:
-        class: 'RagStack'
+        classname: 'RagStack'
       collectors:
         -
           name: 'Library Pages'
-          class: 'LibPagesCollector'
+          classname: 'LibPagesCollector'
           output: 'collector/libpages/data/output'
       context:
         size: 4096
         max_vector_distance: 1.0
       chunker:
-        class: 'StandardChunker'
+        classname: 'StandardChunker'
         size: 1024
         overlap: 128
       context_builder:
-        class: 'SimpleContextAggregator'
+        classname: 'SimpleContextAggregator'
       context_database:
-        class: 'SQLite'
+        classname: 'SQLite'
         name: 'libpages'
       embedding_database:
-        class: 'LanceDB'
+        classname: 'LanceDB'
         name: 'libpages'
       embedding_encoder:
-        class: 'SentenceTransformerEncoder'
+        classname: 'SentenceTransformerEncoder'
         model: 'avsolatorio/GIST-large-Embedding-v0'
       query_processor:
-        class: 'StandardQueryProcessor'
+        classname: 'StandardQueryProcessor'
       reranker:
-        class: 'SentenceTransformerEncoder'
+        classname: 'SentenceTransformerEncoder'
         model: 'BAAI/bge-reranker-large'
         n_results: 5
 

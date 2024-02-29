@@ -12,10 +12,10 @@ def build_rag_stacks(log):
     workflows = get_workflows()
     for w in workflows.values():
         c = __import__(
-            'core.' + w['rag']['stack']['class'],
+            'core.' + w['rag']['stack']['classname'],
             fromlist=['']
         )
-        rs = getattr(c, w['rag']['stack']['class'])
+        rs = getattr(c, w['rag']['stack']['classname'])
         stacks[w['name']] = rs(w['rag'], log)
     return stacks
 
