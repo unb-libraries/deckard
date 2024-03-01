@@ -3,6 +3,7 @@ import os
 from core.config import get_data_dir
 from huggingface_hub import hf_hub_download
 from langchain_community.llms import LlamaCpp
+from logging import Logger
 
 def HUGGINGFACE_MODEL_CACHE_PATH():
     return os.path.join(
@@ -11,12 +12,13 @@ def HUGGINGFACE_MODEL_CACHE_PATH():
         'huggingface'
     )
 
+# @TODO For nice typing, LLM should be base class, with this in LlamaLLM
 class LLM:
-    def __init__(self, log, config):
+    def __init__(self, log: Logger, config: dict) -> None:
         self.config = config
         self.log = log
 
-    def get(self):
+    def get(self) -> LlamaCpp:
         self.model_filepath = hf_hub_download(
             repo_id=self.config['repo'],
             filename=self.config['filename'],
@@ -28,7 +30,7 @@ class LLM:
             case _:
                 return None
 
-    def getLlama(self):
+    def getLlama(self) -> LlamaCpp:
         return LlamaCpp(
             model_path=self.model_filepath,
             max_tokens=self.config['max_response_tokens'],

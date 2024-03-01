@@ -4,10 +4,16 @@ import re
 import sys
 import yaml
 
+from logging import Logger
+
 class RagConfigGenerator:
     MAX_TEST_RUNS = 256
 
-    def __init__(self, filepath, log):
+    def __init__(
+        self,
+        filepath: str,
+        log: Logger
+    ) -> None:
         self.config_index = 0
         self.configurations = []
         config_file_spintax  = open(filepath, 'r').read()
@@ -20,10 +26,10 @@ class RagConfigGenerator:
             log.error(f"Cowardly refusing to process more than {self.MAX_TEST_RUNS} configurations.")
             sys.exit(1)
 
-    def __iter__(self):
+    def __iter__(self) -> None:
         return self
 
-    def __next__(self):
+    def __next__(self) -> None:
         if self.config_index < len(self.configurations):
             config = self.configurations[self.config_index]
             self.config_index += 1
@@ -31,7 +37,7 @@ class RagConfigGenerator:
         else:
             raise StopIteration
 
-    def spintax(self, text):
+    def spintax(self, text:str) -> list:
         pattern = re.compile(r'(\{[^\}]+\}|[^\{\}]*)')
         chunks = pattern.split(text)
 

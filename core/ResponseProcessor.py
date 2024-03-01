@@ -3,7 +3,7 @@ class ResponseProcessor:
         'fraggle'
     ]
 
-    def __init__(self, response):
+    def __init__(self, response: str) -> None:
         self.response = response
         self.tripwire_thrown = False
         if self.response is None or self.response == '':
@@ -11,17 +11,17 @@ class ResponseProcessor:
         self.setCleanResponse()
         self.testTripWire()
 
-    def testTripWire(self):
+    def testTripWire(self) -> None:
         self.tripwire_thrown = False
         for term in self.TRIPWIRE_TERMS:
             if term in self.response:
                 self.tripwire_thrown = True
 
-    def setCleanResponse(self):
+    def setCleanResponse(self) -> None:
         self.response = self.response.strip()
 
-    def tripWireThrown(self):
+    def tripWireThrown(self) -> bool:
         return self.tripwire_thrown
 
-    def getResponse(self):
+    def getResponse(self) -> str:
         return self.response

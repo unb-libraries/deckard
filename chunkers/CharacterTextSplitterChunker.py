@@ -5,6 +5,9 @@ import os
 from core.config import get_data_dir
 from langchain.text_splitter import CharacterTextSplitter
 from logging import Logger
+from typing import TypeVar
+
+T = TypeVar('T', list, list, dict)
 
 class CharacterTextSplitterChunker:
     OUTPUT_PATH = os.path.join(
@@ -22,7 +25,7 @@ class CharacterTextSplitterChunker:
         self,
         content: str,
         metadata: dict
-    ) -> tuple :
+    ) -> T :
         text_splitter = CharacterTextSplitter(
             self.config['split_on'],
             chunk_size=self.config['chunk_size'],
@@ -39,16 +42,19 @@ class CharacterTextSplitterChunker:
             chunks = raw_chunks
 
         if self.config['write_chunks_to_disk']:
-            if not os.path.exists(self.OUTPUT_PATH):
-                os.makedirs(self.OUTPUT_PATH)
-            self.log.info(f"Writing {len(chunks)} chunks to disk.")
-            hash_rep = hashlib.md5(json.dumps(chunks, sort_keys=True).encode('utf-8')).hexdigest()
-            for i, chunk in enumerate(chunks):
-                output_filename = os.path.join(
-                    self.OUTPUT_PATH,
-                    hash_rep
-                ) + f'_{i}.txt'
-                with open(output_filename, 'w') as f:
-                    f.write(chunk)
+            self.writeChunksToDisk(chunks, self.OUTPUT_PATH)
 
         return chunks, raw_chunks, metadata
+
+    @staticmethod
+    def writeChunksToDisk(chunks: list, output_path: str) -> None:
+        if not os.path.exists(output_path):
+            os.makedirs(output_path)
+        hash_rep = hashlib.md5(json.dumps(chunks, sort_keys=True).encode('utf-8')).hexdigest()
+        for i, chunk in enumerate(chunks):
+            output_filename = os.path.join(
+                output_path,
+                hash_rep
+            ) + f'_{i}.txt'
+            with open(output_filename, 'w') as f:
+                f.write(chunk)

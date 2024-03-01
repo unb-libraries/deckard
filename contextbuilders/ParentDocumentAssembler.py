@@ -1,10 +1,15 @@
 # @NOTE: This method does not work well with chunk overlap.
+from contextbuilders.SimpleContextAggregator import SimpleContextAggregator
+from contextdatabases.ContextDatabase import ContextDatabase
+from pandas import DataFrame as Dataframe
 
-class ParentDocumentAssembler:
-    def __init__(self, log):
-        self.log = log
-
-    def buildContext(self, results, database, context_size):
+class ParentDocumentAssembler(SimpleContextAggregator):
+    def buildContext(
+            self,
+            results: Dataframe,
+            database: ContextDatabase,
+            context_size: int
+        ):
         self.results = results
         context = ""
         metadata = {'contextbuilder' : {'documents_generated': [], 'context': '', 'context_length': 0}}

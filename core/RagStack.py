@@ -1,23 +1,35 @@
 from core.classloader import load_class
+from langchain.chains import LLMChain
+from logging import Logger
+from pandas import DataFrame
 
 class RagStack:
     MAX_CONTEXTS = 25
     NO_CONTEX_RESPONSE = "Sorry, this question doesn't seem to be answered within the information I was provided."
 
-    def __init__(self, config, log):
+    def __init__(
+        self,
+        config: dict,
+        log: Logger
+    ) -> None:
         self.log = log
         self.config = config
         self.log.info(f"Building RAG Stack for configuration: {config['name']}")
         self.initComponents()
 
-    def logger(self):
+    def logger(self) -> Logger:
         return self.log
 
-    def addConfigToResponseMetadata(self):
+    def addConfigToResponseMetadata(self) -> None:
         self.response_metadata.append({'configuration': self.config})
         self.response_metadata.append({'api_llm': self.llm_config})
 
-    def query(self, query, chain, llm_config):
+    def query(
+        self,
+        query: str,
+        chain: LLMChain,
+        llm_config: dict
+    ) -> str:
         self.initQuery()
         self.query_value = query
         self.llm_config = llm_config
@@ -61,7 +73,7 @@ class RagStack:
         self.queryChain()
         return self.response
 
-    def search(self, query):
+    def search(self, query: str) -> DataFrame:
         self.log.info(f"Generating embedding for query: {query} [{self.workflow_id}]")
         query_vector = self.encoder.encode(query)
 
@@ -74,14 +86,14 @@ class RagStack:
         vec_results = vec_results.drop(columns=['vector'])
         return(vec_results)
 
-    def initQuery(self):
+    def initQuery(self) -> None:
         self.query_value = ''
         self.chain = ''
         self.response = ''
         self.response_fail = False
         self.response_metadata = []
 
-    def queryChain(self):
+    def queryChain(self) -> None:
         chain_reponse = self.chain.invoke(
             {
                 "context": self.context,
@@ -90,16 +102,16 @@ class RagStack:
         )
         self.response = chain_reponse['text']
 
-    def getResponse(self):
+    def getResponse(self) -> str:
         return self.response
 
-    def getResponseMetadata(self):
+    def getResponseMetadata(self) -> dict:
         return self.response_metadata
 
-    def getResponseFail(self):
+    def getResponseFail(self) -> bool:
         return self.response_fail
 
-    def initComponents(self):
+    def initComponents(self) -> None:
         self.encoder = load_class(
             'encoders',
             self.config['embedding_encoder']['classname'],

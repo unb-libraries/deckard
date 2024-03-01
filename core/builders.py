@@ -1,13 +1,12 @@
-from core.config import get_workflow_db
-from core.config import get_workflow_encoder
 from core.config import get_workflows
 from core.prompts import CONTEXT_ONLY_PROMPT
 from core.prompts import CONTEXT_PLUS_PROMPT
-from core.RagStack import RagStack
+from langchain_community.llms import LlamaCpp
 from langchain.chains import LLMChain
 from langchain.prompts import PromptTemplate
+from logging import Logger
 
-def build_rag_stacks(log):
+def build_rag_stacks(log: Logger) -> dict:
     stacks = {}
     workflows = get_workflows()
     for w in workflows.values():
@@ -19,7 +18,7 @@ def build_rag_stacks(log):
         stacks[w['name']] = rs(w['rag'], log)
     return stacks
 
-def build_llm_chains(app, llm):
+def build_llm_chains(llm: LlamaCpp) -> LLMChain:
     chains = {}
     chains['chain-context-only'] = build_llm_chain(
         llm,
@@ -31,7 +30,7 @@ def build_llm_chains(app, llm):
     )
     return chains
 
-def build_llm_chain(llm, template):
+def build_llm_chain(llm: LlamaCpp, template: str) -> LLMChain:
     prompt = PromptTemplate(
         input_variables=["context", "query"],
         template=template,

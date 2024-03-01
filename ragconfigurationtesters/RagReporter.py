@@ -7,6 +7,7 @@ from core.config import get_data_dir
 from core.time import cur_timestamp, time_since
 from core.utils import gen_uuid
 from pandas import DataFrame
+from logging import Logger
 
 class RagReporter:
     REPORT_PATH = os.path.join(
@@ -15,7 +16,12 @@ class RagReporter:
         'ragconfigtests'
     )
 
-    def __init__(self, config, log, start):
+    def __init__(
+        self,
+        config: dict,
+        log: Logger,
+        start: float
+    ) -> None:
         self.log = log
         self.name = config['name']
         self.id = gen_uuid()
@@ -34,22 +40,45 @@ class RagReporter:
             [],
             columns=['id', 'name', 'score', 'data']
         )
-    def addConfiguration(self, id, config, score):
+    def addConfiguration(
+        self,
+        id: str,
+        config: dict,
+        score: float
+    ) -> None:
         self.configurations[id] = {
             'configuration': config,
             'score': score
         }
 
-    def addScoreboardItem(self, id, name, score):
+    def addScoreboardItem(
+        self,
+        id: str,
+        name: str,
+        score: float
+    ) -> None:
         self.scoreboard.loc[len(self.scoreboard.index)] = [id, name, score]
 
-    def addSummaryItem(self, id, name, score, data, average_response_time):
+    def addSummaryItem(
+        self,
+        id: str,
+        name: str,
+        score: float,
+        data: dict,
+        average_response_time: float
+    ) -> None:
         self.summaries.loc[len(self.summaries.index)] = [id, name, score, data, average_response_time]
 
-    def addDetailItem(self, id, name, score, data):
+    def addDetailItem(
+        self,
+        id: str,
+        name: str,
+        score: float,
+        data: dict
+    ) -> None:
         self.details.loc[len(self.details.index)] = [id, name, score, data]
 
-    def writeReport(self):
+    def writeReport(self) -> None:
         self.log.info("Analyzing Configurations Changes...")
         self.analyzeConfigurations()
         self.log.info("Writing report...")
@@ -78,7 +107,7 @@ class RagReporter:
                 )
             )
 
-    def analyzeConfigurations(self):
+    def analyzeConfigurations(self) -> None:
         self.log.info("Analyzing configurations...")
         self.analysis = {}
         all_configs = []
@@ -96,19 +125,19 @@ class RagReporter:
             self.sb[idx]['values'] = self.getDictsUniqueItems(self.getConfigFromId(sb_config['id']), unique_items_in_config)
         self.sb.sort(key=lambda x: x['score'], reverse=True)
 
-    def getConfigFromId(self, id):
+    def getConfigFromId(self, id: str) -> dict:
         for config_id, config_test in self.configurations.items():
             if config_id == id:
                 return config_test['configuration']
         return {}
 
-    def getConfigScore(self, config):
+    def getConfigScore(self, config: dict) -> float:
         for config_id, config_test in self.configurations.items():
             if config_test['configuration'] == config:
                 return config_test['score']
         return 0
 
-    def uniqueDictItems(self, dict_list):
+    def uniqueDictItems(self, dict_list: list) -> dict:
         different_elements = {}
         for dictionary in dict_list:
             for dictionary_comp in dict_list:
@@ -120,18 +149,30 @@ class RagReporter:
                             different_elements[diff[1]].append(value)
         return different_elements
 
-    def getDictsUniqueItems(self, dict, unique_items):
+    def getDictsUniqueItems(
+        self,
+        dict: dict,
+        unique_items: dict
+    ) -> dict:
         dict_unique_items = {}
         dot_dict = Box(dict)
         for key in unique_items.keys():
             dict_unique_items[key] = eval(f"dot_dict.{key}")
         return dict_unique_items
 
-    def getDictsItemValue(self, dict, namespace):
+    def getDictsItemValue(
+        self,
+        dict: dict,
+        namespace: str
+    ) -> str:
         dot_dict = Box(dict)
         return eval(f"dot_dict.{namespace}")
 
-    def getUniqueItemScores(self, config_list, unique_items):
+    def getUniqueItemScores(
+        self,
+        config_list: dict,
+        unique_items: dict
+    ) -> dict:
         unique_item_scores = {}
         for unique_item_ns, unique_values in unique_items.items():
             if unique_item_ns not in unique_item_scores:

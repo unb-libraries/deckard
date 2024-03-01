@@ -4,10 +4,11 @@ from core.config import get_workflows
 from core.config import get_workflow
 from core.logger import get_logger
 from core.RagBuilder import RagBuilder
+from logging import Logger
 
 CMD_STRING = 'build:rag'
 
-def start(args=sys.argv):
+def start(args: list=sys.argv) -> None:
     log = get_logger()
     validate_args(args, log)
     workflow = get_workflow(args[1])
@@ -15,7 +16,7 @@ def start(args=sys.argv):
     builder = RagBuilder(workflow['rag'], log)
     builder.build()
 
-def validate_args(args, log):
+def validate_args(args: list, log: Logger) -> None:
     workflows = get_workflows()
     if len(args) < 2:
         log.warning(f"Usage: poetry run {CMD_STRING} <workflow>")
@@ -27,7 +28,7 @@ def validate_args(args, log):
         print_get_workflows(log, workflows)
         sys.exit(1)
 
-def print_get_workflows(log, workflows):
+def print_get_workflows(log: Logger, workflows: dict) -> None:
     log.warning("Available endpoints:")
     for workflow in workflows:
         log.warning(f"  {workflow}")

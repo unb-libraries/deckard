@@ -8,9 +8,9 @@ from core.logger import get_logger
 from core.responses import error_response
 from interfaces.api import api_server_up
 from interfaces.api import get_api_uri
+from logging import Logger
 from slack_bolt import App
 from slack_bolt.adapter.socket_mode import SocketModeHandler
-from threading import Lock
 
 CMD_STRING = 'slackbot:start'
 
@@ -65,9 +65,9 @@ def query_llm(ack, respond, command):
     rj = json.loads(r.text)
     respond(wrap_markdown_formatter(rj['response']))
 
-def wrap_markdown_formatter(text):
+def wrap_markdown_formatter(text: str) -> str:
     return '```' + text + '```'
 
-def start():
+def start() -> None:
     handler = SocketModeHandler(app, SLACK_APP_TOKEN)
     handler.start()

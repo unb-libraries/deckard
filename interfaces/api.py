@@ -7,8 +7,8 @@ from core.builders import build_rag_stacks
 from core.config import get_api_host
 from core.config import get_api_llm_config
 from core.config import get_api_port
-from core.LLMQuery import LLMQuery
 from core.LLM import LLM
+from core.LLMQuery import LLMQuery
 from core.logger import get_logger
 from core.time import cur_timestamp
 from core.time import time_since
@@ -17,6 +17,7 @@ from flask import current_app
 from flask import Flask
 from flask import g
 from flask import request
+from logging import Logger
 from threading import Lock
 
 CMD_STRING = 'api:start'
@@ -36,7 +37,7 @@ def before_request():
 # Cheery default.
 @app.route("/")
 def hello():
-    return "Hi there, nosy!"
+    return "Endpoint Disabled."
 
 # Raw LLM query endpoint. Invoke chain directly. Not intended for general use.
 @app.route("/query/raw", methods=['POST'])
@@ -98,7 +99,7 @@ def db_search_query():
         )
 
 # API Start-up.
-def start():
+def start() -> None:
     log = get_logger()
 
     log.info("Loading LLM...")
@@ -106,7 +107,7 @@ def start():
     app.config['llm'] = llm
 
     log.info("Building LLM Chains...")
-    app.config['chains'] = build_llm_chains(app, llm)
+    app.config['chains'] = build_llm_chains(llm)
 
     log.info("Building Query Stacks...")
     app.config['rag_stacks'] = build_rag_stacks(log)
@@ -115,20 +116,20 @@ def start():
     log.info("Starting API server...")
     app.run(port=get_api_port())
 
-def check_api_server_exit(log):
+def check_api_server_exit(log: Logger):
     if not api_server_up():
         log.error("API server not running")
         sys.exit(1)
 
-def api_server_up():
+def api_server_up() -> bool:
     a_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     location = (get_api_host(), get_api_port())
     return a_socket.connect_ex(location) == 0
 
-def get_api_uri(endpoint = '/query/raw'):
+def get_api_uri(endpoint: str='/query/raw') -> str:
     return 'http://' + get_api_host() + ':' + str(get_api_port()) + endpoint
 
-def result_wrapper(results):
+def result_wrapper(results: dict) -> str:
     return json.dumps(
         results,
         indent=2

@@ -19,7 +19,7 @@ PREFIXES = [
 ]
 
 class StandardQueryProcessor(RawQueryProcessor):
-    def getEmbeddingSearchQuery(self):
+    def getEmbeddingSearchQuery(self) -> str:
         lower_query = self.query.lower()
         for prefix in PREFIXES:
             if lower_query.startswith(prefix.lower()):
@@ -29,5 +29,5 @@ class StandardQueryProcessor(RawQueryProcessor):
                 ).strip()
         return self.stripTrailingPunctuation(self.query).strip()
 
-    def stripTrailingPunctuation(self, query):
+    def stripTrailingPunctuation(self, query: str) -> str:
         return query.rstrip('.,?!')

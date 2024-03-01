@@ -1,15 +1,22 @@
-from json import dumps
-
-from core.utils import gen_uuid
-from core.ResponseProcessor import ResponseProcessor
 from core.QueryLoggerJsonFile import QueryLoggerJsonFile
+from core.RagStack import RagStack
+from core.ResponseProcessor import ResponseProcessor
 from core.responses import error_response, fail_response
+from core.utils import gen_uuid
+from json import dumps
+from langchain.chains import LLMChain
 
 class LLMQuery:
     FAIL_RESPONSE_MESSAGE = fail_response()
     ERROR_RESPONSE_MESSAGE = error_response()
 
-    def __init__(self, stack, id, client, llm_config):
+    def __init__(
+        self,
+        stack: RagStack,
+        id: str,
+        client: str,
+        llm_config: dict
+    ) -> None:
         self.stack = stack
         self.log = stack.logger()
         self.workflow_id = id
@@ -17,7 +24,14 @@ class LLMQuery:
         self.llm_config = llm_config
         self.initQuery()
 
-    def query(self, query, chain, start_time, lock_wait, safeguard = True):
+    def query(
+        self,
+        query: str,
+        chain: LLMChain,
+        start_time: float,
+        lock_wait: float,
+        safeguard: bool=True
+    ) -> str:
         self.initQuery()
         self.log.info(f"New Query: {query} [{self.workflow_id}]")
 
@@ -52,7 +66,13 @@ class LLMQuery:
         self.response_fail = False
         self.response_metadata = []
 
-    def logQuery(self, stack_response, tripwire_thrown, start_time, lock_wait):
+    def logQuery(
+        self,
+        stack_response: str,
+        tripwire_thrown: bool,
+        start_time: float,
+        lock_wait: float
+    ) -> None:
         QueryLoggerJsonFile(
             self.query_id,
             self.client,
@@ -67,7 +87,7 @@ class LLMQuery:
             self.response_fail
         ).write(self.query_id)
 
-    def createQueryResponse(self):
+    def createQueryResponse(self) -> str:
         self.log.info(f"Responding with: {self.response}")
         return dumps({
             'response': self.response,

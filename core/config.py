@@ -1,5 +1,7 @@
 import yaml
 
+from logging import Logger
+
 def get_config_as_dict():
     return yaml.safe_load(open("config.yml"))
 
@@ -15,7 +17,7 @@ def get_workflows():
 def get_workflow_names():
     return ', '.join(get_workflows().keys())
 
-def get_workflow(id):
+def get_workflow(id: str):
     w = get_workflows()
     if id not in w:
         return None
@@ -30,7 +32,11 @@ def get_api_port():
 def get_api_host():
     return get_config_as_dict()['api']['host']
 
-def get_workflow_db(id, log, create_if_not_exists=False):
+def get_workflow_db(
+    id: str,
+    log: Logger,
+    create_if_not_exists: bool=False
+):
     w = get_workflow(id)
     if w is None:
         return None
@@ -42,7 +48,7 @@ def get_workflow_db(id, log, create_if_not_exists=False):
     dc = getattr(m, w['rag']['embedding_database']['classname'])
     return dc(w['rag']['embedding_database']['name'], log, create_if_not_exists)
 
-def get_workflow_encoder(id, log):
+def get_workflow_encoder(id: str, log: Logger):
     w = get_workflow(id)
     if w is None:
         return None

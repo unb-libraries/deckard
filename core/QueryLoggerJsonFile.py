@@ -12,9 +12,8 @@ class QueryLoggerJsonFile(QueryLogger):
         'queries'
     )
 
-    def write(self, id):
-        log_file = self.getLogfilePath(id)
-        with open(log_file, 'w') as f:
+    def write(self, id: str):
+        with open(self.getLogfilePath(id), 'w') as f:
             f.write(
                 json.dumps(
                     self.log,
@@ -22,7 +21,7 @@ class QueryLoggerJsonFile(QueryLogger):
                 )
             )
 
-    def getLogfilePath(self, item_hash):
+    def getLogfilePath(self, item_hash: str) -> str:
         if not os.path.exists(self.QUERY_LOG_DATA_PATH):
             os.makedirs(self.log_path)
         timestamp = cur_timestamp()

@@ -1,4 +1,8 @@
-def load_class(module_name, class_name, args=[]):
+def load_class(
+        module_name: str,
+        class_name: str,
+        args: list=[]
+) -> object:
     m = __import__(
         module_name + '.' + class_name,
         fromlist=['']

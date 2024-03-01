@@ -1,14 +1,19 @@
 from core.utils import clear_gpu_memory
 from core.classloader import load_class
 from core.utils import gen_uuid
+from logging import Logger
 
 class RagBuilder:
-    def __init__(self, config, log):
+    def __init__(
+        self,
+        config: dict,
+        log: Logger
+    ):
         self.log = log
         self.config = config
         self.initComponents()
 
-    def build(self):
+    def build(self) -> None:
         self.database.flushData()
         self.context_database.flushData()
 
@@ -63,7 +68,7 @@ class RagBuilder:
         self.log.info(f"Processed {processed_items} items, ignored {ignored_items} items.")
         self.log.info("Workflow Processing Complete.")
 
-    def initComponents(self):
+    def initComponents(self) -> None:
         self.encoder = load_class(
             'encoders',
             self.config['embedding_encoder']['classname'],

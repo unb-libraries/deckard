@@ -3,7 +3,7 @@ import yaml
 from core.logger import get_logger
 from ragconfigurationtesters.RagTester import RagTester
 
-def start():
+def start() -> None:
     log = get_logger()
     log.info("Loading Configuration...")
     config = yaml.safe_load(open("ragconfigurationtesters/config.yml"))

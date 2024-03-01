@@ -5,10 +5,11 @@ from core.config import get_workflows
 from core.logger import get_logger
 from interfaces.api import check_api_server_exit
 from interfaces.api import get_api_uri
+from logging import Logger
 
 CMD_STRING = 'query:rag'
 
-def query(args=sys.argv):
+def query(args: list=sys.argv):
     log = get_logger()
     validate_args(args, log)
     check_api_server_exit(log)
@@ -25,7 +26,7 @@ def query(args=sys.argv):
     )
     print(r.text)
 
-def validate_args(args, log):
+def validate_args(args: list, log: Logger) -> None:
     if len(args) < 2:
         print_usage(log)
         sys.exit(1)
@@ -42,5 +43,5 @@ def validate_args(args, log):
         print_usage(log)
         sys.exit(1)
 
-def print_usage(log):
+def print_usage(log: Logger) -> None:
     log.warning(f"Usage: poetry run {CMD_STRING} <workflowid> <query>")

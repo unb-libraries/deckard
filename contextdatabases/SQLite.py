@@ -2,9 +2,10 @@ import os
 import sqlite3
 import sys
 
+from contextdatabases.ContextDatabase import ContextDatabase
 from core.config import get_data_dir
 
-class SQLite:
+class SQLite(ContextDatabase):
     CONTEXT_TABLE_NAME = "llm_document_chunks"
     DATA_PATH = os.path.join(
         get_data_dir(),

@@ -5,18 +5,22 @@ from core.LLM import LLM
 from core.prompts import CONTEXT_ONLY_PROMPT
 from core.RagBuilder import RagBuilder
 from core.utils import clear_gpu_memory
+from logging import Logger
 from ragconfigurationtesters.RagConfigGenerator import RagConfigGenerator
 from ragconfigurationtesters.RagReporter import RagReporter
-
 from core.time import cur_timestamp
 from core.utils import gen_uuid
 
 class RagTester:
-    def __init__(self, log, config):
+    def __init__(
+        self,
+        log: Logger,
+        config: dict
+    ) -> None:
         self.log = log
         self.config = config
 
-    def run(self):
+    def run(self) -> None:
         self.log.info("Running tests...")
         self.log.info("Loading LLM...")
         test_start = cur_timestamp()
@@ -109,7 +113,11 @@ class RagTester:
         reporter.writeReport()
         self.log.info("Tests complete.")
 
-    def getRagStack(self, config, log):
+    def getRagStack(
+        self,
+        config: dict,
+        log: Logger
+    ):
         c = __import__(
             'core.' + config['stack']['classname'],
             fromlist=['']

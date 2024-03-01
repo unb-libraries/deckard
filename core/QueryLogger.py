@@ -2,7 +2,20 @@ from core.time import cur_timestamp
 from core.time import time_since
 
 class QueryLogger:
-    def __init__(self, id, client, query, response, cleaned_response, endpoint, circuit_breaker, metadata, start_time, lock_wait, failure):
+    def __init__(
+        self,
+        id: str,
+        client: str,
+        query: str,
+        response: str,
+        cleaned_response: str,
+        endpoint: str,
+        circuit_breaker: bool,
+        metadata: dict,
+        start_time: float,
+        lock_wait: float,
+        failure: bool
+    ) -> None:
         self.log = {
                 "id": id,
                 "client": client,

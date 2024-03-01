@@ -3,15 +3,15 @@ import requests
 import sys
 
 from interfaces.api import get_api_uri, check_api_server_exit
-
 from core.config import get_workflow
 from core.config import get_workflow_encoder
 from core.config import get_workflows
 from core.logger import get_logger
+from logging import Logger
 
 CMD_STRING = 'search:embeddings'
 
-def search(args=sys.argv):
+def search(args: list=sys.argv) -> None:
     log = get_logger()
     validate_args(args, log)
     check_api_server_exit(log)
@@ -28,7 +28,7 @@ def search(args=sys.argv):
     )
     print(r.text)
 
-def validate_args(args, log):
+def validate_args(args: list, log: Logger) -> None:
     if len(args) < 2:
         print_usage(log)
         print_get_workflows(log)
@@ -51,10 +51,10 @@ def validate_args(args, log):
         print_usage(log)
         sys.exit(1)
 
-def print_usage(log):
+def print_usage(log: Logger) -> None:
     log.warning(f"Usage: poetry run {CMD_STRING} <endpoint> <search>")
 
-def print_get_workflows(log):
+def print_get_workflows(log: Logger) -> None:
     workflows = get_workflows()
     log.warning("Available workflows:")
     for workflow in workflows:

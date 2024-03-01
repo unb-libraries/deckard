@@ -4,10 +4,11 @@ import sys
 from core.logger import get_logger
 from interfaces.api import check_api_server_exit
 from interfaces.api import get_api_uri
+from logging import Logger
 
 CMD_STRING = 'query:llm'
 
-def query(args=sys.argv):
+def query(args: list=sys.argv) -> None:
     log = get_logger()
     check_api_server_exit(log)
     validate_args(args, log)
@@ -28,7 +29,7 @@ def query(args=sys.argv):
     )
     print(r.text)
 
-def validate_args(args, log):
+def validate_args(args: list, log: Logger) -> None:
     if len(args) < 1:
         print_usage(log)
         sys.exit(1)
@@ -41,5 +42,5 @@ def validate_args(args, log):
         print_usage(log)
         sys.exit(1)
 
-def print_usage(log):
+def print_usage(log: Logger) -> None:
     log.warning(f"Usage: poetry run {CMD_STRING} <query> <context>")
