@@ -1,14 +1,24 @@
 import dictdiffer
+import os
 import json
 
 from box import Box
+from core.config import get_data_dir
 from core.time import cur_timestamp, time_since
+from core.utils import gen_uuid
 from pandas import DataFrame
 
 class RagReporter:
+    REPORT_PATH = os.path.join(
+        get_data_dir(),
+        'reports',
+        'ragconfigtests'
+    )
+
     def __init__(self, config, log, start):
         self.log = log
         self.name = config['name']
+        self.id = gen_uuid()
         self.start = start
         self.config = config
         self.configurations = {}
@@ -54,8 +64,19 @@ class RagReporter:
             "configurations": self.configurations,
             "analysis": self.analysis
         }
-        with open(self.config['report'], 'w') as f:
-            f.write(json.dumps(final_report, indent=4))
+        if not os.path.exists(self.REPORT_PATH):
+            os.makedirs(self.REPORT_PATH)
+        output_file = os.path.join(
+            self.REPORT_PATH,
+            f"{self.id}_{cur_timestamp()}.json"
+        )
+        with open(output_file, 'w') as f:
+            f.write(
+                json.dumps(
+                    final_report,
+                    indent=4
+                )
+            )
 
     def analyzeConfigurations(self):
         self.log.info("Analyzing configurations...")

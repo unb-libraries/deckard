@@ -2,7 +2,6 @@ ragconfigurationtests:
   -
     name: "Scraped Library Webpages"
     input: "test_input.spintax"
-    report: "test_report.json"
     test_queries:
       -
         query: "What is the capital of France?"

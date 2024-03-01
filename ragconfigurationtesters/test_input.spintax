@@ -6,6 +6,11 @@ collectors:
         name: 'Library Pages'
         classname: 'LibPagesCollector'
         output: 'collector/libpages/data/output'
+        config:
+            cache_urls: True
+            ignore_links: True
+            images_to_alt: True
+            unicode_snob: True
 context:
     size: 4096
     max_vector_distance: 1.0
@@ -23,10 +28,10 @@ embedding_database:
     name: 'libpages'
 embedding_encoder:
     classname: 'SentenceTransformerEncoder'
-    model: '{avsolatorio/GIST-large-Embedding-v0|BAAI/bge-large-en-v1.5|hkunlp/instructor-large|sentence-transformers/all-MiniLM-L12-v2}'
+    model: 'avsolatorio/GIST-large-Embedding-v0'
 query_processor:
-    classname: {'StandardQueryProcessor'|'RawQueryProcessor'}
+    classname: 'StandardQueryProcessor'
 reranker:
     classname: 'SentenceTransformerEncoder'
-    model: '{BAAI/bge-reranker-large|colbert-ir/colbertv2.0}'
+    model: 'BAAI/bge-reranker-large'
     n_results: 5

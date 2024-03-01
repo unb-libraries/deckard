@@ -27,8 +27,8 @@ python-box = "7.1.1"
 
 [tool.poetry.scripts]
 "api:start" = "interfaces.api:start"
-"build:rag" = "processors.main:start"
-"evaluate" = "ragconfigurationtester.evaluate:start"
+"build:rag" = "ragbuilders.main:start"
+"evaluate" = "ragconfigurationtesters.evaluate:start"
 "query:llm" = "interfaces.llmdirectquery:query"
 "query:rag" = "interfaces.ragquery:query"
 "search:embeddings" = "interfaces.embeddingsearch:search"

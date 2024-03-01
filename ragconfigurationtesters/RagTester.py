@@ -5,8 +5,8 @@ from core.LLM import LLM
 from core.prompts import CONTEXT_ONLY_PROMPT
 from core.RagBuilder import RagBuilder
 from core.utils import clear_gpu_memory
-from ragconfigurationtester.RagConfigGenerator import RagConfigGenerator
-from ragconfigurationtester.RagReporter import RagReporter
+from ragconfigurationtesters.RagConfigGenerator import RagConfigGenerator
+from ragconfigurationtesters.RagReporter import RagReporter
 
 from core.time import cur_timestamp
 from core.utils import gen_uuid
@@ -21,7 +21,7 @@ class RagTester:
         self.log.info("Loading LLM...")
         test_start = cur_timestamp()
 
-        rag_configs = RagConfigGenerator("ragconfigurationtester/" + self.config['input'], self.log)
+        rag_configs = RagConfigGenerator("ragconfigurationtesters/" + self.config['input'], self.log)
 
         llm = LLM(self.log, self.config['llm']['model']).get()
         prompt = CONTEXT_ONLY_PROMPT()
