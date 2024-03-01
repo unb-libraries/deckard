@@ -1,6 +1,6 @@
+from core.utils import clear_gpu_memory
 from logging import Logger
 from pandas import DataFrame
-from core.utils import clear_gpu_memory
 from sentence_transformers import SentenceTransformer, util
 
 class SentenceTransformerEncoder:

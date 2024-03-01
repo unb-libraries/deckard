@@ -37,9 +37,13 @@ workflows:
         size: 4096
         max_vector_distance: 1.0
       chunker:
-        classname: 'StandardChunker'
-        size: 1024
-        overlap: 128
+        classname: 'CharacterTextSplitterChunker'
+        config:
+          chunk_size: 1024
+          overlap: 128
+          split_on: "\n"
+          add_document_metadata: False
+          write_chunks_to_disk: True
       context_builder:
         classname: 'SimpleContextAggregator'
       context_database:

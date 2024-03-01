@@ -36,10 +36,7 @@ class RagBuilder:
 
                 document['chunks'], document['raw_chunks'], document['metadata'] = self.chunker.generate(
                     document_content,
-                    metadata,
-                    "\n",
-                    int(self.config['chunker']['size']),
-                    int(self.config['chunker']['overlap']),
+                    metadata
                 )
 
                 if len(document['chunks']) > 0:
@@ -98,6 +95,7 @@ class RagBuilder:
             'chunkers',
             self.config['chunker']['classname'],
             [
+                self.config['chunker']['config'],
                 self.log
             ]
         )

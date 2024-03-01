@@ -6,7 +6,7 @@ from core.config import get_data_dir
 from langchain.text_splitter import CharacterTextSplitter
 from logging import Logger
 
-class StandardChunker:
+class CharacterTextSplitterChunker:
     OUTPUT_PATH = os.path.join(
         get_data_dir(),
         'chunkers',
@@ -14,31 +14,31 @@ class StandardChunker:
         'output'
     )
 
-    def __init__(self, log: Logger) -> None:
+    def __init__(self, config: dict, log: Logger) -> None:
+        self.config = config
         self.log = log
 
     def generate(
         self,
         content: str,
-        metadata: dict,
-        split_on: str,
-        chunk_size: int,
-        overlap: int,
-        add_document_metadata=False,
-        write_chunks=True
-    ):
-        text_splitter = CharacterTextSplitter(split_on, chunk_size=chunk_size, chunk_overlap=overlap)
+        metadata: dict
+    ) -> tuple :
+        text_splitter = CharacterTextSplitter(
+            self.config['split_on'],
+            chunk_size=self.config['chunk_size'],
+            chunk_overlap=self.config['overlap']
+        )
         raw_chunks = text_splitter.split_text(content)
         self.log.info(f"Generated {len(raw_chunks)} chunks from content.")
 
         chunks = []
-        if 'title' in metadata and add_document_metadata:
+        if 'title' in metadata and self.config['add_document_metadata']:
             for raw_chunk in raw_chunks:
                 chunks.append(metadata['title'] + "\n\n" + raw_chunk)
         else:
             chunks = raw_chunks
 
-        if write_chunks:
+        if self.config['write_chunks_to_disk']:
             if not os.path.exists(self.OUTPUT_PATH):
                 os.makedirs(self.OUTPUT_PATH)
             self.log.info(f"Writing {len(chunks)} chunks to disk.")

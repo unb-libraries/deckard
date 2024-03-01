@@ -1,12 +1,12 @@
-from bs4 import BeautifulSoup
 import hashlib
 import html2text
 import json
 import os
-import re
 import requests
 import time
 
+from bs4 import BeautifulSoup
+from logging import Logger
 from pathlib import Path
 
 class WebPageCollector:
@@ -20,7 +20,7 @@ class WebPageCollector:
     }
     URL_LIST_FILE_PATH = 'collectors/libpages/urls.txt'
 
-    def __init__(self, config, log):
+    def __init__(self, config: dict, log: Logger) -> None:
         self.config = config
         self.page_queue = []
         self.page_queue_index = 0
@@ -40,7 +40,8 @@ class WebPageCollector:
         else:
             raise StopIteration
 
-    def name(self):
+    @staticmethod
+    def name():
         return 'Generic Web Page Collector'
 
     def validateDataPaths(self):
@@ -118,7 +119,8 @@ class WebPageCollector:
         text = text.replace('#', '-')
         return text
 
-    def stripPageCruft(self, page_content):
+    @staticmethod
+    def stripPageCruft(page_content):
         body_split = page_content.split('<body>')
         if len(body_split) > 1:
             return body_split.split('</body>')[0]

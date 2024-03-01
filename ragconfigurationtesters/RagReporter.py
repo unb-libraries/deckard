@@ -68,7 +68,7 @@ class RagReporter:
             os.makedirs(self.REPORT_PATH)
         output_file = os.path.join(
             self.REPORT_PATH,
-            f"{self.id}_{cur_timestamp()}.json"
+            f"{cur_timestamp()}_{self.id}.json"
         )
         with open(output_file, 'w') as f:
             f.write(
@@ -85,7 +85,12 @@ class RagReporter:
         for config in self.configurations.values():
             all_configs.append(config['configuration'])
         unique_items_in_config = self.uniqueDictItems(all_configs)
-        self.param_analysis = self.getUniqueItemScores(all_configs, unique_items_in_config)
+        raw_params = self.getUniqueItemScores(all_configs, unique_items_in_config)
+        sorted_params = {}
+        for param, values in raw_params.items():
+            sorted_params[param] = dict(sorted(values.items(), key=lambda item: item[1]['average_score'], reverse=True))
+        self.param_analysis = sorted_params
+
         self.sb = self.scoreboard.sort_values(by=["score"], ascending=False).to_dict(orient='records')
         for idx, sb_config in enumerate(self.sb):
             self.sb[idx]['values'] = self.getDictsUniqueItems(self.getConfigFromId(sb_config['id']), unique_items_in_config)

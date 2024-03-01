@@ -15,10 +15,12 @@ class LibPagesCollector(WebPageCollector):
     ]
     URL_LIST_FILE_PATH = 'collectors/data/lib_urls.txt'
 
-    def name(self):
+    @staticmethod
+    def name() -> str:
         return 'UNB Libraries Webpage Collector'
 
-    def stripPageCruft(self, page_content):
+    @staticmethod
+    def stripPageCruft(page_content: str) -> str:
         page_test = page_content.split('block-pagetitle')
         if len(page_test) < 2:
             page_test = page_content.split('block-mainpagecontent')
