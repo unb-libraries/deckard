@@ -42,10 +42,10 @@ def get_workflow_db(
         return None
     m = __import__(
         'vectordatabases.' +
-            w['rag']['embedding_database']['classname'],
+            w['rag']['embedding_database']['class_name'],
         fromlist=['']
     )
-    dc = getattr(m, w['rag']['embedding_database']['classname'])
+    dc = getattr(m, w['rag']['embedding_database']['class_name'])
     return dc(w['rag']['embedding_database']['name'], log, create_if_not_exists)
 
 def get_workflow_encoder(id: str, log: Logger):
@@ -54,10 +54,10 @@ def get_workflow_encoder(id: str, log: Logger):
         return None
     m = __import__(
         'encoders.' +
-            w['rag']['embedding_encoder']['classname'],
+            w['rag']['embedding_encoder']['class_name'],
         fromlist=['']
     )
-    tc = getattr(m, w['rag']['embedding_encoder']['classname'])
+    tc = getattr(m, w['rag']['embedding_encoder']['class_name'])
     return tc(
         w['rag']['embedding_encoder']['model'],
         log

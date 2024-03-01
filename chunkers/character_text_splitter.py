@@ -1,15 +1,31 @@
+"""Provides the CharacterTextSplitterChunker class."""
 import hashlib
 import json
 import os
-
-from core.config import get_data_dir
-from langchain.text_splitter import CharacterTextSplitter
 from logging import Logger
 from typing import TypeVar
+
+from langchain.text_splitter import CharacterTextSplitter
+
+from core.config import get_data_dir
 
 T = TypeVar('T', list, list, dict)
 
 class CharacterTextSplitterChunker:
+    """Generates chunks from text using CharacterTextSplitter.
+
+    Args:
+        config (dict): The configuration for the chunker.
+        log (Logger): The logger for the chunker.
+
+    Attributes:
+        config (dict): The configuration for the chunker.
+        log (Logger): The logger for the chunker.
+
+    .. data:: OUTPUT_PATH
+        The path to write the chunks to.
+    """
+
     OUTPUT_PATH = os.path.join(
         get_data_dir(),
         'chunkers',
@@ -26,6 +42,15 @@ class CharacterTextSplitterChunker:
         content: str,
         metadata: dict
     ) -> T :
+        """Generates chunks from the content and metadata.
+
+        Args:
+            content (str): The content to generate chunks from.
+            metadata (dict): The metadata to generate chunks from.
+
+        Returns:
+            T: The generated chunks, the raw chunks, and the metadata.
+        """
         text_splitter = CharacterTextSplitter(
             self.config['split_on'],
             chunk_size=self.config['chunk_size'],
@@ -42,12 +67,18 @@ class CharacterTextSplitterChunker:
             chunks = raw_chunks
 
         if self.config['write_chunks_to_disk']:
-            self.writeChunksToDisk(chunks, self.OUTPUT_PATH)
+            self._write_chunks_to_disk(chunks, self.OUTPUT_PATH)
 
         return chunks, raw_chunks, metadata
 
     @staticmethod
-    def writeChunksToDisk(chunks: list, output_path: str) -> None:
+    def _write_chunks_to_disk(chunks: list, output_path: str) -> None:
+        """Writes the chunks to disk.
+
+        Args:
+            chunks (list): The chunks to write to disk.
+            output_path (str): The path to write the chunks to.
+        """
         if not os.path.exists(output_path):
             os.makedirs(output_path)
         hash_rep = hashlib.md5(json.dumps(chunks, sort_keys=True).encode('utf-8')).hexdigest()
@@ -56,5 +87,5 @@ class CharacterTextSplitterChunker:
                 output_path,
                 hash_rep
             ) + f'_{i}.txt'
-            with open(output_filename, 'w') as f:
+            with open(output_filename, 'w', encoding="utf-8") as f:
                 f.write(chunk)

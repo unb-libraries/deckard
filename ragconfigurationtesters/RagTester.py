@@ -119,8 +119,8 @@ class RagTester:
         log: Logger
     ):
         c = __import__(
-            'core.' + config['stack']['classname'],
+            'core.' + config['stack']['class_name'],
             fromlist=['']
         )
-        rs = getattr(c, config['stack']['classname'])
+        rs = getattr(c, config['stack']['class_name'])
         return rs(config, log)

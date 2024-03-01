@@ -114,7 +114,7 @@ class RagStack:
     def initComponents(self) -> None:
         self.encoder = load_class(
             'encoders',
-            self.config['embedding_encoder']['classname'],
+            self.config['embedding_encoder']['class_name'],
             [
                 self.config['embedding_encoder']['model'],
                 self.log
@@ -122,7 +122,7 @@ class RagStack:
         )
         self.reranker = load_class(
             'encoders',
-            self.config['reranker']['classname'],
+            self.config['reranker']['class_name'],
             [
                 self.config['reranker']['model'],
                 self.log
@@ -130,7 +130,7 @@ class RagStack:
         )
         self.database = load_class(
             'vectordatabases',
-            self.config['embedding_database']['classname'],
+            self.config['embedding_database']['class_name'],
             [
                 self.config['embedding_database']['name'],
                 self.log,
@@ -139,7 +139,7 @@ class RagStack:
         )
         self.context_database = load_class(
             'contextdatabases',
-            self.config['context_database']['classname'],
+            self.config['context_database']['class_name'],
             [
                 self.config['context_database']['name'],
                 self.log,
@@ -148,7 +148,7 @@ class RagStack:
         )
         self.context_builder = load_class(
             'contextbuilders',
-            self.config['context_builder']['classname'],
+            self.config['context_builder']['class_name'],
             [
                 self.log
             ]
@@ -156,7 +156,7 @@ class RagStack:
 
         self.query_processor = load_class(
             'queryprocessors',
-            self.config['query_processor']['classname'],
+            self.config['query_processor']['class_name'],
             [
                 self.log
             ]

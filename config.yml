@@ -22,11 +22,11 @@ workflows:
     rag:
       name: 'libpages'
       stack:
-        classname: 'RagStack'
+        class_name: 'RagStack'
       collectors:
         -
           name: 'Library Pages'
-          classname: 'LibPagesCollector'
+          class_name: 'LibPagesCollector'
           output: 'collector/libpages/data/output'
           config:
             cache_urls: True
@@ -37,7 +37,8 @@ workflows:
         size: 4096
         max_vector_distance: 1.0
       chunker:
-        classname: 'CharacterTextSplitterChunker'
+        modulename: 'charcter_text_splitter'
+        class_name: 'CharacterTextSplitterChunker'
         config:
           chunk_size: 1024
           overlap: 128
@@ -45,20 +46,20 @@ workflows:
           add_document_metadata: False
           write_chunks_to_disk: True
       context_builder:
-        classname: 'SimpleContextAggregator'
+        class_name: 'SimpleContextAggregator'
       context_database:
-        classname: 'SQLite'
+        class_name: 'SQLite'
         name: 'libpages'
       embedding_database:
-        classname: 'LanceDB'
+        class_name: 'LanceDB'
         name: 'libpages'
       embedding_encoder:
-        classname: 'SentenceTransformerEncoder'
+        class_name: 'SentenceTransformerEncoder'
         model: 'avsolatorio/GIST-large-Embedding-v0'
       query_processor:
-        classname: 'StandardQueryProcessor'
+        class_name: 'StandardQueryProcessor'
       reranker:
-        classname: 'SentenceTransformerEncoder'
+        class_name: 'SentenceTransformerEncoder'
         model: 'BAAI/bge-reranker-large'
         n_results: 5
 
