@@ -30,12 +30,6 @@ def get_api_port():
 def get_api_host():
     return get_config_as_dict()['api']['host']
 
-def get_workflow_context_rag_conf(id):
-    w = get_workflow(id)
-    if w is None:
-        return None
-    return w['rag']
-
 def get_workflow_db(id, log, create_if_not_exists=False):
     w = get_workflow(id)
     if w is None:
@@ -47,18 +41,6 @@ def get_workflow_db(id, log, create_if_not_exists=False):
     )
     dc = getattr(m, w['rag']['embedding_database']['classname'])
     return dc(w['rag']['embedding_database']['name'], log, create_if_not_exists)
-
-def get_workflow_context_db(id, log, create_if_not_exists=False):
-    w = get_workflow(id)
-    if w is None:
-        return None
-    m = __import__(
-        'contextdatabases.' +
-            w['rag']['context_database']['classname'],
-        fromlist=['']
-    )
-    dc = getattr(m, w['rag']['context_database']['classname'])
-    return dc(w['rag']['context_database']['name'], log, create_if_not_exists)
 
 def get_workflow_encoder(id, log):
     w = get_workflow(id)
@@ -74,54 +56,3 @@ def get_workflow_encoder(id, log):
         w['rag']['embedding_encoder']['model'],
         log
     )
-
-def get_workflow_chunker(id, log):
-    w = get_workflow(id)
-    if w is None:
-        return None
-    m = __import__(
-        'chunkers.' +
-            w['rag']['chunker']['classname'],
-        fromlist=['']
-    )
-    cc = getattr(m, w['rag']['chunker']['classname'])
-    return cc(log)
-
-def get_workflow_rag_context_builder(id, log):
-    w = get_workflow(id)
-    if w is None:
-        return None
-    m = __import__(
-        'contextbuilders.' +
-            w['rag']['context_builder']['classname'],
-        fromlist=['']
-    )
-    cb = getattr(m, w['rag']['context_builder']['classname'])
-    return cb(log)
-
-def get_workflow_rag_reranker(id, log):
-    w = get_workflow(id)
-    if w is None:
-        return None
-    m = __import__(
-        'encoders.' +
-            w['rag']['reranker']['classname'],
-        fromlist=['']
-    )
-    tc = getattr(m, w['rag']['reranker']['classname'])
-    return tc(
-        w['rag']['reranker']['model'],
-        log
-    )
-
-def get_workflow_query_processor(id, query, log):
-    w = get_workflow(id)
-    if w is None:
-        return None
-    m = __import__(
-        'queryprocessors.' +
-            w['rag']['query_processor']['classname'],
-        fromlist=['']
-    )
-    qp = getattr(m, w['rag']['query_processor']['classname'])
-    return qp(query, log)
