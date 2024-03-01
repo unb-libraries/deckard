@@ -2,8 +2,9 @@ import hashlib
 import json
 import os
 
-from langchain.text_splitter import CharacterTextSplitter
 from core.config import get_data_dir
+from langchain.text_splitter import CharacterTextSplitter
+from logging import Logger
 
 class StandardChunker:
     OUTPUT_PATH = os.path.join(
@@ -13,16 +14,16 @@ class StandardChunker:
         'output'
     )
 
-    def __init__(self, log) -> None:
+    def __init__(self, log: Logger) -> None:
         self.log = log
 
     def generate(
         self,
-        content,
-        metadata,
-        split_on,
-        chunk_size,
-        overlap,
+        content: str,
+        metadata: dict,
+        split_on: str,
+        chunk_size: int,
+        overlap: int,
         add_document_metadata=False,
         write_chunks=True
     ):

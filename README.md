@@ -10,12 +10,16 @@ Documentation is available [in the documentation folder](./documentation/README.
 
 ## CLI Commands
 ### Start API Server
+Start the API server:
+
 ```
 poetry run api:start
 ```
 
 ### Direct LLM Query
-(requires API Running)
+#### (Requires: API Server Running)
+Query the LLM model directly without a rag workflow:
+
 ```
 poetry run query:llm <query> <optional context>
 
@@ -25,7 +29,9 @@ poetry run query:llm 'Who is Donald Sutherland?' 'Donald sutherland is a duck'
 ```
 
 ### RAG Query
-(requires API Running)
+#### (Requires: API Server Running)
+Query the configured RAG pipeline:
+
 ```
 poetry run query:rag <endpoint> <query>
 
@@ -35,6 +41,8 @@ poetry run query:rag libpages 'Who is the dean of UNB libraries?'
 ```
 
 ### Search Embeddings
+Search the RAG pipeline embeddings database directly:
+
 ```
 poetry run search:embeddings <endpoint> <query>
 
@@ -43,7 +51,8 @@ poetry run search:embeddings libpages 'Who is the dean of UNB libraries?'
 ```
 
 ### Build RAG data
-This may have requirements such as database tunnels or on-disk data files.
+Build the RAG pipeline's underlying data to ready it for use. This may have
+requirements such as network requests, database tunnels, or on-disk data files.
 
 ```
 poetry run build:rag <endpoint>
@@ -53,7 +62,8 @@ poetry run build:rag libpages
 ```
 
 ### Start Slackbot
-Slack auth tokens need to be in ENV.
+#### (Requires: API Server Running)
+Start the slackbot configured locally. Slack auth tokens need to be in ENV:
 
 ```
 poetry run slackbot:start

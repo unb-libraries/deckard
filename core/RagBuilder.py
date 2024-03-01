@@ -38,8 +38,8 @@ class RagBuilder:
                     document_content,
                     metadata,
                     "\n",
-                    self.config['chunker']['size'],
-                    self.config['chunker']['overlap'],
+                    int(self.config['chunker']['size']),
+                    int(self.config['chunker']['overlap']),
                 )
 
                 if len(document['chunks']) > 0:
