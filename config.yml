@@ -16,16 +16,18 @@ api:
       top_p: 0.1
       verbose: True
 data_dir: '/home/core/llm/chatbot/data'
-workflows:
+rag:
   libpages:
     name: 'libpages'
     rag:
       name: 'libpages'
       stack:
+        module_name: 'deckard.rag'
         class_name: 'RagStack'
       collectors:
         -
           name: 'Library Pages'
+          module_name: 'deckard.collectors'
           class_name: 'LibPagesCollector'
           output: 'collector/libpages/data/output'
           config:
@@ -37,7 +39,7 @@ workflows:
         size: 4096
         max_vector_distance: 1.0
       chunker:
-        modulename: 'charcter_text_splitter'
+        module_name: 'deckard.chunkers'
         class_name: 'CharacterTextSplitterChunker'
         config:
           chunk_size: 1024
@@ -46,19 +48,25 @@ workflows:
           add_document_metadata: False
           write_chunks_to_disk: True
       context_builder:
+        module_name: 'deckard.context_builders'
         class_name: 'SimpleContextAggregator'
       context_database:
+        module_name: 'deckard.databases'
         class_name: 'SQLite'
         name: 'libpages'
       embedding_database:
+        module_name: 'deckard.databases'
         class_name: 'LanceDB'
         name: 'libpages'
       embedding_encoder:
+        module_name: 'deckard.encoders'
         class_name: 'SentenceTransformerEncoder'
         model: 'avsolatorio/GIST-large-Embedding-v0'
       query_processor:
+        module_name: 'deckard.query_processors'
         class_name: 'StandardQueryProcessor'
       reranker:
+        module_name: 'deckard.encoders'
         class_name: 'SentenceTransformerEncoder'
         model: 'BAAI/bge-reranker-large'
         n_results: 5

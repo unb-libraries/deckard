@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "core"
+name = "deckard"
 version = "0.1.0"
 description = ""
 authors = ["UNB Libraries <libsystems@unb.ca>"]
@@ -26,13 +26,14 @@ dictdiffer = "0.9.0"
 python-box = "7.1.1"
 
 [tool.poetry.scripts]
-"api:start" = "interfaces.api:start"
-"build:rag" = "ragbuilders.main:start"
-"evaluate" = "ragconfigurationtesters.evaluate:start"
-"query:llm" = "interfaces.llmdirectquery:query"
-"query:rag" = "interfaces.ragquery:query"
-"search:embeddings" = "interfaces.embeddingsearch:search"
-"slackbot:start" = "interfaces.slackbot:start"
+"api:start" = "deckard.interfaces.api:start"
+"build:rag" = "deckard.interfaces.ragbuild:start"
+"evaluate" = "deckard.interfaces.ragevaluate:start"
+"query:llm" = "deckard.interfaces.llmdirectquery:query"
+"query:rag" = "deckard.interfaces.ragquery:query"
+"search:embeddings" = "deckard.interfaces.embeddingsearch:search"
+"slackbot:start" = "deckard.interfaces.slackbot:start"
+"test" = "deckard.interfaces.test:run"
 
 [build-system]
 requires = ["poetry-core"]

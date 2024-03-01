@@ -18,7 +18,7 @@ poetry run api:start
 
 ### Direct LLM Query
 #### (Requires: API Server Running)
-Query the LLM model directly without a rag workflow:
+Query the LLM model directly without a rag pipeline:
 
 ```
 poetry run query:llm <query> <optional context>

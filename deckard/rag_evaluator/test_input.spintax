@@ -1,0 +1,50 @@
+name: 'libpages'
+stack:
+    module_name: 'deckard.rag'
+    class_name: 'RagStack'
+collectors:
+    -
+        name: 'Library Pages'
+        module_name: 'deckard.collectors'
+        class_name: 'LibPagesCollector'
+        output: 'collector/libpages/data/output'
+        config:
+            cache_urls: True
+            ignore_links: True
+            images_to_alt: True
+            unicode_snob: True
+context:
+    size: 4096
+    max_vector_distance: 1.0
+chunker:
+    module_name: 'deckard.chunkers'
+    class_name: 'CharacterTextSplitterChunker'
+    config:
+        chunk_size: {512|1024|2048}
+        overlap: 128
+        split_on: "\n"
+        add_document_metadata: False
+        write_chunks_to_disk: True
+context_builder:
+    module_name: 'deckard.context_builders'
+    class_name: 'SimpleContextAggregator'
+context_database:
+    module_name: 'deckard.databases'
+    class_name: 'SQLite'
+    name: 'libpages'
+embedding_database:
+    module_name: 'deckard.databases'
+    class_name: 'LanceDB'
+    name: 'libpages'
+embedding_encoder:
+    module_name: 'deckard.encoders'
+    class_name: 'SentenceTransformerEncoder'
+    model: 'avsolatorio/GIST-large-Embedding-v0'
+query_processor:
+    module_name: 'deckard.query_processors'
+    class_name: 'StandardQueryProcessor'
+reranker:
+    module_name: 'deckard.encoders'
+    class_name: 'SentenceTransformerEncoder'
+    model: 'BAAI/bge-reranker-large'
+    n_results: 5
