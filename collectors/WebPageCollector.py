@@ -20,12 +20,10 @@ class WebPageCollector:
     }
     URL_LIST_FILE_PATH = 'collectors/libpages/urls.txt'
 
-    def __init__(self, log, cache_urls=True, description_is_metadata=False, strip_tags=True):
-        self.cache_urls = cache_urls
+    def __init__(self, config, log):
+        self.config = config
         self.page_queue = []
         self.page_queue_index = 0
-        self.strip_tags = strip_tags
-        self.description_is_metadata = description_is_metadata
         if self.URL_LIST_FILE_PATH:
             self.validateDataPaths()
             self.queueUrls()
@@ -68,7 +66,7 @@ class WebPageCollector:
         ) + '.json'
         output_file = Path(output_filename)
         metadata_file = Path(metadata_filename)
-        if not self.cache_urls or not output_file.is_file() or not metadata_file.is_file():
+        if not self.config['cache_urls'] or not output_file.is_file() or not metadata_file.is_file():
             self.log.info("Downloading: " + url)
             response = requests.get(
                 url,
@@ -110,9 +108,9 @@ class WebPageCollector:
 
     def extractPageText(self, page_content):
         h = html2text.HTML2Text()
-        h.ignore_links = True
-        h.images_to_alt = True
-        h.unicode_snob = True
+        h.ignore_links = self.config['ignore_links']
+        h.images_to_alt = self.config['images_to_alt']
+        h.unicode_snob = self.config['unicode_snob']
 
         text = h.handle(
             self.stripPageCruft(page_content)

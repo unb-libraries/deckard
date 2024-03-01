@@ -1,6 +1,6 @@
 from json import dumps
-from secrets import token_hex
 
+from core.utils import gen_uuid
 from core.ResponseProcessor import ResponseProcessor
 from core.QueryLoggerJsonFile import QueryLoggerJsonFile
 from core.responses import error_response, fail_response
@@ -21,7 +21,7 @@ class LLMQuery:
         self.initQuery()
         self.log.info(f"New Query: {query} [{self.workflow_id}]")
 
-        self.query_id = self.generateQueryID()
+        self.query_id = gen_uuid()
         self.log.info(f"Assigned ID: {self.query_id}")
 
         self.query_value = query
@@ -74,5 +74,3 @@ class LLMQuery:
             'fail': self.response_fail
         })
 
-    def generateQueryID(self):
-        return token_hex(32)

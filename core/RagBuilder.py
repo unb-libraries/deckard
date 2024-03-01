@@ -1,6 +1,6 @@
 from core.utils import clear_gpu_memory
 from core.classloader import load_class
-from secrets import token_hex
+from core.utils import gen_uuid
 
 class RagBuilder:
     def __init__(self, config, log):
@@ -23,7 +23,7 @@ class RagBuilder:
             processed_items = 0
             id = 0
             for document_content, metadata in collector:
-                document = {'id': token_hex(32)}
+                document = {'id': gen_uuid()}
 
                 if document_content is None:
                     self.log.warning(f"Item {id} is None, skipping.")
@@ -109,6 +109,7 @@ class RagBuilder:
                     'collectors',
                     collector['classname'],
                     [
+                        collector['config'],
                         self.log
                     ]
                 )

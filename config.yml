@@ -28,6 +28,11 @@ workflows:
           name: 'Library Pages'
           classname: 'LibPagesCollector'
           output: 'collector/libpages/data/output'
+          config:
+            cache_urls: True
+            ignore_links: True
+            images_to_alt: True
+            unicode_snob: True
       context:
         size: 4096
         max_vector_distance: 1.0

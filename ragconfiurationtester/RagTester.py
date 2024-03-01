@@ -5,9 +5,11 @@ from core.LLM import LLM
 from core.prompts import CONTEXT_ONLY_PROMPT
 from core.RagBuilder import RagBuilder
 from core.utils import clear_gpu_memory
-from scoring.RagConfigGenerator import RagConfigGenerator
-from scoring.RagReporter import RagReporter
-from secrets import token_hex
+from ragconfigurationtester.RagConfigGenerator import RagConfigGenerator
+from ragconfigurationtester.RagReporter import RagReporter
+
+from core.time import cur_timestamp
+from core.utils import gen_uuid
 
 class RagTester:
     def __init__(self, log, config):
@@ -17,14 +19,16 @@ class RagTester:
     def run(self):
         self.log.info("Running tests...")
         self.log.info("Loading LLM...")
-        rag_configs = RagConfigGenerator("scoring/" + self.config['input'], self.log)
+        test_start = cur_timestamp()
+
+        rag_configs = RagConfigGenerator("ragconfigurationtester/" + self.config['input'], self.log)
 
         llm = LLM(self.log, self.config['llm']['model']).get()
         prompt = CONTEXT_ONLY_PROMPT()
 
-        reporter = RagReporter(self.config, self.log)
+        reporter = RagReporter(self.config, self.log, test_start)
         for rag_configuration in rag_configs:
-            configuration_id = token_hex(32)
+            configuration_id = gen_uuid()
             score = 0
 
             chain = build_llm_chain(
@@ -55,9 +59,9 @@ class RagTester:
                     response = "No response"
                     response_failed = True
                 else:
-                    if test_query['expected'] in response:
-                        score += 1
+                    if any(x.lower() in response.lower() for x in test_query['expected']):
                         response_failed = False
+                        score += 1
                     else:
                         response_failed = True
 

@@ -5,6 +5,8 @@ import sys
 import yaml
 
 class RagConfigGenerator:
+    MAX_TEST_RUNS = 256
+
     def __init__(self, filepath, log):
         self.config_index = 0
         self.configurations = []
@@ -14,8 +16,8 @@ class RagConfigGenerator:
                 yaml.safe_load(config)
             )
         log.info(f"Loaded {len(self.configurations)} configurations")
-        if len(self.configurations) > 128:
-            log.error("Cowardly refusing to process more than 128 configurations.")
+        if len(self.configurations) > self.MAX_TEST_RUNS:
+            log.error(f"Cowardly refusing to process more than {self.MAX_TEST_RUNS} configurations.")
             sys.exit(1)
 
     def __iter__(self):

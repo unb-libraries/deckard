@@ -27,6 +27,7 @@ class StandardQueryProcessor(RawQueryProcessor):
                 return self.stripTrailingPunctuation(
                     self.query[len(prefix):]
                 ).strip()
+        return self.stripTrailingPunctuation(self.query).strip()
 
     def stripTrailingPunctuation(self, query):
         return query.rstrip('.,?!')

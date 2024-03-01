@@ -2,8 +2,3 @@ https://lib.unb.ca/node/1
 https://lib.unb.ca/node/3
 https://lib.unb.ca/node/4
 https://lib.unb.ca/node/5
-https://lib.unb.ca/node/6
-https://lib.unb.ca/node/7
-https://lib.unb.ca/node/8
-https://lib.unb.ca/node/9
-https://lib.unb.ca/node/10

@@ -2,11 +2,14 @@ import dictdiffer
 import json
 
 from box import Box
+from core.time import cur_timestamp, time_since
 from pandas import DataFrame
 
 class RagReporter:
-    def __init__(self, config, log):
+    def __init__(self, config, log, start):
         self.log = log
+        self.name = config['name']
+        self.start = start
         self.config = config
         self.configurations = {}
         self.scoreboard = DataFrame(
@@ -41,6 +44,9 @@ class RagReporter:
         self.analyzeConfigurations()
         self.log.info("Writing report...")
         final_report = {
+            "name": self.name,
+            "length": time_since(self.start),
+            "num_configurations": len(self.configurations),
             "scoreboard": self.sb,
             "parameters": self.param_analysis,
             "summaries": self.summaries.sort_values(by=["score"], ascending=False).to_dict(orient='records'),
