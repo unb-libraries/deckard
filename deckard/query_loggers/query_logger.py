@@ -1,15 +1,34 @@
+"""Provides the QueryLogger class."""
 from deckard.core.time import cur_timestamp
 from deckard.core.time import time_since
 
 class QueryLogger:
+    """Builds the log for a query and its responses.
+
+    Args:
+        query_id (str): The ID of the query.
+        client (str): The client making the query.
+        query (str): The query.
+        response (str): The raw response.
+        cleaned_response (str): The cleaned response.
+        pipeline (str): The pipeline used to answer the query.
+        circuit_breaker (bool): The circuit breaker flag.
+        metadata (dict): The metadata for the query.
+        start_time (float): The start time of the query.
+        lock_wait (float): The lock wait time.
+        failure (bool): The failure flag.
+
+    Attributes:
+        log (dict): The log entry.
+    """
     def __init__(
         self,
-        id: str,
+        query_id: str,
         client: str,
         query: str,
         response: str,
         cleaned_response: str,
-        endpoint: str,
+        pipeline: str,
         circuit_breaker: bool,
         metadata: dict,
         start_time: float,
@@ -17,9 +36,9 @@ class QueryLogger:
         failure: bool
     ) -> None:
         self.log = {
-                "id": id,
+                "id": query_id,
                 "client": client,
-                "endpoint": endpoint,
+                "pipeline": pipeline,
                 "timestamp": cur_timestamp(),
                 "query": query,
                 "raw_response": response,

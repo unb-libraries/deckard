@@ -1,18 +1,16 @@
+"""Provides a Slackbot interface for Deckard."""
 import json
 import os
-import requests
 import shlex
 
-from deckard.core import get_rag_pipeline
-from deckard.core import get_logger
-from deckard.core.responses import error_response
-from deckard.interfaces.api import api_server_up
-from deckard.interfaces.api import get_api_uri
-from logging import Logger
 from slack_bolt import App
 from slack_bolt.adapter.socket_mode import SocketModeHandler
 
-CMD_STRING = 'slackbot:start'
+from deckard.core import get_logger, get_rag_pipeline, available_rag_pipelines_message
+from deckard.interfaces.api import api_server_up, post_query_to_api
+from deckard.llm.responses import error_response
+
+DECKARD_CMD_STRING = 'slackbot:start'
 
 # This socketmode app can be translated to a listener endpoint for slack.
 # It listens for messages and responds to them.
@@ -25,49 +23,69 @@ app = App(
     logger=log
 )
 
-@app.command("/query_llm")
-def query_llm(ack, respond, command):
+@app.command("/events")
+def slack_events(ack: callable, respond: callable, command: str) -> None:
+    """ Handles events from Slack.
+
+    Args:
+        ack (callable): The ack function.
+        respond (callable): The respond function.
+        command (str): The command to handle.
+    """
     ack()
     command_data = shlex.split(command['text'])
 
-    log.info(f"Received command: {shlex.split(command['text'])}")
-
+    log.info("Received command: %s", shlex.split(command['text']))
     if not len(command_data) == 2:
-        log.info(f"Invalid command: {command['text']}")
-        respond(get_usage_display())
+        log.info("Invalid command: %s", command['text'])
+        respond(get_user_usage_example())
         return
 
     if get_rag_pipeline(command_data[0]) is None:
-        log.info(f"Invalid pipeline: {command_data[0]}")
-        respond(get_usage_display())
+        log.info("Invalid pipeline: %s", command_data[0])
+        respond(get_user_usage_example())
         return
 
     if command_data[1] == "":
-        log.info(f"Empty query: {command_data[1]}")
-        respond(get_usage_display())
+        log.info("Empty query: %s", command_data[1])
+        respond(get_user_usage_example())
         return
 
     if not api_server_up():
-        log.error("Query API server cannot be reached.")
+        log.error("API server cannot be reached.")
         respond(error_response())
         return
 
-    uri = get_api_uri('/query')
-    log.info(f"Querying {uri}...")
-    r = requests.post(
-        uri,
-        json={
-            "endpoint": command_data[0],
-            "query": command_data[1],
-            "client": "slack"
-        }
+    r = post_query_to_api(
+        command_data[1],
+        '/query',
+        'slackbot',
+        log,
+        pipeline=command_data[0]
     )
     rj = json.loads(r.text)
     respond(wrap_markdown_formatter(rj['response']))
 
 def wrap_markdown_formatter(text: str) -> str:
+    """Wraps the text in markdown formatting.
+
+    Args:
+        text (str): The text to wrap.
+
+    Returns:
+        str: The wrapped text.
+    """
     return '```' + text + '```'
 
 def start() -> None:
+    """Starts the Slackbot."""
     handler = SocketModeHandler(app, SLACK_APP_TOKEN)
     handler.start()
+
+def get_user_usage_example() -> str:
+    """Gets the usage message for the Slack User.
+
+    Returns:
+        str: The usage message.
+    """
+    return("Usage: /query_llm <pipeline> <query>. %s", available_rag_pipelines_message())

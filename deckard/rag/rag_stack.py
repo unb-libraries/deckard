@@ -1,3 +1,4 @@
+"""Provides the RAGStack class."""
 from logging import Logger
 
 from langchain.chains import LLMChain
@@ -6,6 +7,34 @@ from pandas import DataFrame
 from deckard.core import load_class
 
 class RagStack:
+    """Provides a class that intefaces with a RAG pipeline.
+
+    Args:
+        config (dict): The pipeline configuration.
+        log (Logger): The logger.
+
+    Attributes:
+        MAX_CONTEXTS (int): The maximum number of contexts to return.
+        NO_CONTEX_RESPONSE (str): The response for no context found.
+        chain (str): The chain for the query.
+        config (dict): The configuration.
+        context (str): The context for the query.
+        context_builder (ContextBuilder): The context builder.
+        context_database (ContextDatabase): The context database.
+        context_max_distance (float): The maximum distance for the context.
+        context_size (int): The size of the context.
+        database (EmbeddingDatabase): The database for the embeddings.
+        encoder (EmbeddingEncoder): The encoder for the embeddings.
+        llm_config (dict): The LLM configuration.
+        log (Logger): The logger.
+        pipeline_id (str): The pipeline ID.
+        query_processor (QueryProcessor): The query processor.
+        response (str): The response.
+        response_fail (bool): The response fail flag.
+        response_metadata (list): The response metadata.
+        reranker (Reranker): The reranker for the embeddings.
+    """
+
     MAX_CONTEXTS = 25
     NO_CONTEX_RESPONSE = "Sorry, this question doesn't seem to be answered within the information I was provided."
 
@@ -16,13 +45,28 @@ class RagStack:
     ) -> None:
         self.log = log
         self.config = config
-        self.log.info(f"Building RAG Stack for configuration: {config['name']}")
-        self.initComponents()
+        self.log.info("Building RAG Stack for configuration: %s", config['name'])
+        self.init_query()
+        self._init_rag_pipeline_components()
+        self.chain = ''
+        self.context = ''
+        self.query_value = ''
+        self.response = ''
+        self.response_fail = False
+        self.response_metadata = []
+        self.llm_config = {}
+
 
     def logger(self) -> Logger:
+        """Returns the logger.
+
+        Returns:
+            Logger: The logger.
+        """
         return self.log
 
-    def addConfigToResponseMetadata(self) -> None:
+    def add_config_response_metadata(self) -> None:
+        """Adds the RAG configuration to the response metadata."""
         self.response_metadata.append({'configuration': self.config})
         self.response_metadata.append({'api_llm': self.llm_config})
 
@@ -32,29 +76,39 @@ class RagStack:
         chain: LLMChain,
         llm_config: dict
     ) -> str:
-        self.initQuery()
+        """Queries the RAG pipeline.
+
+        Args:
+            query (str): The query.
+            chain (LLMChain): The chain for the query.
+            llm_config (dict): The LLM configuration.
+
+        Returns:
+            str: The response.
+        """
+        self.init_query()
         self.query_value = query
         self.llm_config = llm_config
         self.chain = chain
 
-        self.query_processor.setQuery(query)
-        embedding_query = self.query_processor.getEmbeddingSearchQuery()
+        self.query_processor.set_query(query)
+        embedding_query = self.query_processor.get_embedding_search_query()
 
-        self.log.info(f"Generating embedding for query: {query} ({embedding_query}) [{self.pipeline_id}]")
+        self.log.info("Generating embedding for query: %s (%s) [%s]", query, embedding_query, self.pipeline_id)
         query_vector = self.encoder.encode(embedding_query)
 
-        self.log.info(f"Querying Vector Database with embeddings: {query} [{self.pipeline_id}]")
+        self.log.info("Querying Vector Database with embeddings: %s [%s]", query, self.pipeline_id)
         vec_results = self.database.query(
             query_vector,
             limit=self.MAX_CONTEXTS,
             max_distance=self.context_max_distance,
         )
 
-        self.log.info(f"Reranking Results: {query} ({embedding_query}) [{self.pipeline_id}]")
+        self.log.info("Reranking Results: %s (%s) [%s]", query, embedding_query, self.pipeline_id)
         reranked_results = self.reranker.rerank(embedding_query, vec_results)
 
-        self.log.info(f"Generating context for query: {query} [{self.pipeline_id}]")
-        self.context, context_metadata = self.context_builder.buildContext(
+        self.log.info("Generating context for query: %s [%s]", query, self.pipeline_id)
+        self.context, context_metadata = self.context_builder.build_context(
             reranked_results,
             self.context_database,
             self.context_size
@@ -63,39 +117,50 @@ class RagStack:
         self.response_metadata.append({'embedding_query': embedding_query})
         self.response_metadata.append({'vector_results': reranked_results.to_dict()})
         self.response_metadata.append(context_metadata)
-        self.addConfigToResponseMetadata()
+        self.add_config_response_metadata()
 
         if self.context == '':
             self.response = self.NO_CONTEX_RESPONSE
             self.response_fail = True
-            self.log.info(f"No Context Found for query: {query}, Responding with: {self.response}")
+            self.log.info("No Context Found for query: %s, Responding with: %s", query, self.response)
             return self.response
 
-        self.log.info(f"Querying Chain for query: {query} [{self.pipeline_id}]")
-        self.queryChain()
+        self.log.info("Querying Chain for query: %s [%s]", query, self.pipeline_id)
+        self.query_chain()
         return self.response
 
     def search(self, query: str) -> DataFrame:
-        self.log.info(f"Generating embedding for query: {query} [{self.pipeline_id}]")
+        """Searches the embeddings database.
+
+        Args:
+            query (str): The query.
+
+        Returns:
+            DataFrame: The search results.
+        """
+        self.log.info("Generating embedding for query: %s [%s]", query, self.pipeline_id)
         query_vector = self.encoder.encode(query)
 
-        self.log.info(f"Querying Vector Database with embeddings: {query} [{self.pipeline_id}]")
+        self.log.info("Querying Vector Database with embeddings: %s [%s]", query, self.pipeline_id)
         vec_results = self.database.query(
             query_vector,
             limit=self.MAX_CONTEXTS,
             max_distance=self.context_max_distance,
         )
-        vec_results = vec_results.drop(columns=['vector'])
-        return(vec_results)
+        return vec_results.drop(columns=['vector'])
 
-    def initQuery(self) -> None:
-        self.query_value = ''
+    def init_query(self) -> None:
+        """Initializes the query."""
         self.chain = ''
+        self.context = ''
+        self.query_value = ''
         self.response = ''
         self.response_fail = False
         self.response_metadata = []
+        self.llm_config = {}
 
-    def queryChain(self) -> None:
+    def query_chain(self) -> None:
+        """Queries the LLM chain."""
         chain_reponse = self.chain.invoke(
             {
                 "context": self.context,
@@ -104,16 +169,32 @@ class RagStack:
         )
         self.response = chain_reponse['text']
 
-    def getResponse(self) -> str:
+    def get_response(self) -> str:
+        """Returns the response.
+
+        Returns:
+            str: The response.
+        """
         return self.response
 
-    def getResponseMetadata(self) -> dict:
+    def get_response_metadata(self) -> dict:
+        """Returns the response metadata.
+
+        Returns:
+            dict: The response metadata.
+        """
         return self.response_metadata
 
-    def getResponseFail(self) -> bool:
+    def get_response_fail(self) -> bool:
+        """Returns whether the query failed.
+
+        Returns:
+            bool: Whether the query failed.
+        """
         return self.response_fail
 
-    def initComponents(self) -> None:
+    def _init_rag_pipeline_components(self) -> None:
+        """Initializes the components for the RAG pipeline."""
         self.encoder = load_class(
             self.config['embedding_encoder']['module_name'],
             self.config['embedding_encoder']['class_name'],

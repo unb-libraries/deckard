@@ -12,7 +12,7 @@ Deckard's architecture is based on a core concept of 'data units': representatio
 
 ## RAG pipeline
 ### Collectors
-Collectors collect data units from source(s) and transform them into pure textual representations. Modules can be written to access data via the web, from a database, or another endpoint. pipelines can leverage multiple collectors.
+Collectors collect data units from source(s) and transform them into pure textual representations. Modules can be written to access data via the web, from a database, or another endpoint. Pipelines can leverage multiple collectors.
 
 ### Chunkers
 Chunkers divide data units into fragments of the original data unit. These fragments are called 'chunks'. By chunking data, we:

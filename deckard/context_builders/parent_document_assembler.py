@@ -1,15 +1,36 @@
-# @NOTE: This method does not work well with chunk overlap.
-from .simple_aggregator import SimpleContextAggregator
-from deckard.databases.context_database import ContextDatabase
+"""Provides the ParentDocumentAssembler class."""
+from typing import TypeVar
+
 from pandas import DataFrame as Dataframe
 
+from deckard.databases.context_database import ContextDatabase
+from .simple_aggregator import SimpleContextAggregator
+
+T = TypeVar('T', str, dict)
+
 class ParentDocumentAssembler(SimpleContextAggregator):
-    def buildContext(
+    """Assembles the parent document from the context database.
+
+    Args:
+        log (Logger): The logger for the context builder.
+    """
+
+    def build_context(
             self,
             results: Dataframe,
             database: ContextDatabase,
             context_size: int
-        ):
+        ) -> T:
+        """Builds the context from the context database.
+
+        Args:
+            results (Dataframe): The results to build the context from.
+            database (ContextDatabase): The context database to build the context from.
+            context_size (int): The size of the context to build.
+
+        Returns:
+            T: The context and the metadata.
+        """
         self.results = results
         context = ""
         metadata = {'contextbuilder' : {'documents_generated': [], 'context': '', 'context_length': 0}}

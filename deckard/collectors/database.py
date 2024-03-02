@@ -1,6 +1,5 @@
-import json
+"""Provides the DatabaseCollector class."""
 import time
-
 from logging import Logger
 
 from deckard.core import json_dumper
@@ -28,7 +27,7 @@ class DatabaseCollector:
     def len(self) -> int:
         return len(self.item_queue)
 
-    def generate_metadata(self, url: str) -> str:
+    def _generate_metadata(self, url: str) -> str:
         return json_dumper(
             {
                 "collector": self.name(),
@@ -38,8 +37,5 @@ class DatabaseCollector:
             }
         )
 
-    def ignoreItem(self, page_content: str) -> bool:
-        for ignore_string in self.IGNORE_PAGE_STRINGS:
-            if ignore_string in page_content:
-                return True
+    def ignore_item(self) -> bool:
         return False

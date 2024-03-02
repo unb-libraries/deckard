@@ -33,7 +33,7 @@ poetry run query:llm 'Who is Donald Sutherland?' 'Donald sutherland is a duck'
 Query the configured RAG pipeline:
 
 ```
-poetry run query:rag <endpoint> <query>
+poetry run query:rag <pipeline> <query>
 
 Examples:
 poetry run query:rag libpages 'Where is the bathroom?'
@@ -44,7 +44,7 @@ poetry run query:rag libpages 'Who is the dean of UNB libraries?'
 Search the RAG pipeline embeddings database directly:
 
 ```
-poetry run search:embeddings <endpoint> <query>
+poetry run search:embeddings <pipeline> <query>
 
 Example:
 poetry run search:embeddings libpages 'Who is the dean of UNB libraries?'
@@ -55,7 +55,7 @@ Build the RAG pipeline's underlying data to ready it for use. This may have
 requirements such as network requests, database tunnels, or on-disk data files.
 
 ```
-poetry run build:rag <endpoint>
+poetry run build:rag <pipeline>
 
 Example:
 poetry run build:rag libpages

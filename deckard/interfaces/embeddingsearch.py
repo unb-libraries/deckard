@@ -1,60 +1,60 @@
+"""Provides a command to search for embeddings within RAG databases."""
 import logging
-import requests
 import sys
-
-from deckard.interfaces.api import get_api_uri, check_api_server_exit
-from deckard.core import get_rag_pipeline
-from deckard.core import get_rag_pipelines
-from deckard.core import get_logger
 from logging import Logger
 
-CMD_STRING = 'search:embeddings'
+from deckard.core import available_rag_pipelines_message, get_logger, get_rag_pipeline
+from deckard.interfaces.api import check_api_server_exit, post_query_to_api
+
+DECKARD_CMD_STRING = 'search:embeddings'
 
 def search(args: list=sys.argv) -> None:
+    """Searches for embeddings within RAG databases.
+
+    Args:
+        args (list, optional): The arguments for the search. Defaults to sys.argv.
+    """
     log = get_logger()
     validate_args(args, log)
     check_api_server_exit(log)
 
-    uri = get_api_uri('/search')
-    log.info(f"Querying {uri}...")
-    r = requests.post(
-        uri,
-        json={
-            "endpoint": args[1],
-            "query": args[2],
-            "client": "poetry"
-        }
+    r = post_query_to_api(
+        args[2],
+        '/search',
+        'deckard.%s',DECKARD_CMD_STRING,
+        log,
+        pipeline=args[1]
     )
     print(r.text)
 
 def validate_args(args: list, log: Logger) -> None:
-    if len(args) < 2:
-        print_usage(log)
-        print_get_rag_pipelines(log)
-        sys.exit(1)
+    """Validates the arguments for the command and exits if invalid.
 
-    logging.info(f"Endpoint: {args[1]}")
+    Args:
+        args (list): The arguments to validate.
+        log (Logger): The logger to use.
+    """
+    logging.info("Pipeline: %s", args[1])
     pipeline = get_rag_pipeline(args[1])
 
     if pipeline is None:
-        log.warning(f"Endpoint {args[1]} not found")
-        print_usage(log)
-        print_get_rag_pipelines(log)
+        log.warning("Pipeline %s not found", args[1])
+        log_usage(log)
+        log.info(available_rag_pipelines_message())
         sys.exit(1)
 
     try:
         if args[2] == "":
             raise ValueError
-    except:
+    except Exception:
         log.warning("Search term cannot be empty")
-        print_usage(log)
+        log_usage(log)
         sys.exit(1)
 
-def print_usage(log: Logger) -> None:
-    log.warning(f"Usage: poetry run {CMD_STRING} <endpoint> <search>")
+def log_usage(log: Logger) -> None:
+    """Outputs the usage message for the command.
 
-def print_get_rag_pipelines(log: Logger) -> None:
-    pipelines = get_rag_pipelines()
-    log.warning("Available RAG pipelines:")
-    for pipeline in pipelines:
-        log.warning(f"* {pipeline}")
+    Args:
+        log (Logger): The logger to use.
+    """
+    log.warning("Usage: poetry run %s <pipeline> <search>", DECKARD_CMD_STRING)

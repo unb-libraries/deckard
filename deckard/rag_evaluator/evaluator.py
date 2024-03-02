@@ -5,10 +5,9 @@ from deckard.core.builders import build_llm_chain
 from deckard.core.time import cur_timestamp
 from deckard.core.utils import clear_gpu_memory
 from deckard.core.utils import gen_uuid
-from deckard.llm import CONTEXT_ONLY_PROMPT
+from deckard.llm import get_context_only_prompt
 from deckard.llm import LLM
 from deckard.rag import RagBuilder
-
 from .config_generator import RagConfigGenerator
 from .reporter import RagEvaluatorReporter
 
@@ -29,7 +28,7 @@ class RagPipelineEvaluator:
         rag_configs = RagConfigGenerator("deckard/rag_evaluator/" + self.config['input'], self.log)
 
         llm = LLM(self.log, self.config['llm']['model']).get()
-        prompt = CONTEXT_ONLY_PROMPT()
+        prompt = get_context_only_prompt()
 
         reporter = RagEvaluatorReporter(self.config, self.log, test_start)
         for rag_configuration in rag_configs:
@@ -41,14 +40,14 @@ class RagPipelineEvaluator:
                 prompt
             )
 
-            self.log.info(f"Building RAG data: {rag_configuration['name']}")
+            self.log.info("Building RAG data: %s", rag_configuration['name'])
             builder = RagBuilder(rag_configuration, self.log)
             builder.build()
 
-            self.log.info(f"Loading RAG stack: {rag_configuration['name']}")
+            self.log.info("Loading RAG stack: %s", rag_configuration['name'])
             rag_stack = self.getRagStack(rag_configuration, self.log)
 
-            self.log.info(f"Running queries RAG stack: {rag_configuration['name']}")
+            self.log.info("Running queries RAG stack: %s", rag_configuration['name'])
             question_responses = []
             question_response_times = []
             for test_query in self.config['test_queries']:

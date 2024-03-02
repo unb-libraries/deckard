@@ -1,8 +1,8 @@
-import dictdiffer
+from logging import Logger
 import os
 
+import dictdiffer
 from box import Box
-from logging import Logger
 from pandas import DataFrame
 
 from deckard.core import get_data_dir
@@ -80,7 +80,7 @@ class RagEvaluatorReporter:
         self.details.loc[len(self.details.index)] = [id, name, score, data]
 
     def writeReport(self) -> None:
-        self.log.info("Analyzing Configurations Changes...")
+        self.log.info("Analyzing Configuration Changes...")
         self.analyzeConfigurations()
         self.log.info("Writing report...")
         final_report = {

@@ -1,14 +1,12 @@
 """Provides the CharacterTextSplitterChunker class."""
 import hashlib
-import json
 import os
 from logging import Logger
 from typing import TypeVar
 
 from langchain.text_splitter import CharacterTextSplitter
 
-from deckard.core import get_data_dir
-from deckard.core import json_dumper
+from deckard.core import json_dumper, get_data_dir
 
 T = TypeVar('T', list, list, dict)
 
@@ -20,11 +18,9 @@ class CharacterTextSplitterChunker:
         log (Logger): The logger for the chunker.
 
     Attributes:
+        OUTPUT_PATH (str): The path to write the chunks to.
         config (dict): The configuration for the chunker.
         log (Logger): The logger for the chunker.
-
-    .. data:: OUTPUT_PATH
-        The path to write the chunks to.
     """
 
     OUTPUT_PATH = os.path.join(
@@ -58,7 +54,7 @@ class CharacterTextSplitterChunker:
             chunk_overlap=self.config['overlap']
         )
         raw_chunks = text_splitter.split_text(content)
-        self.log.info(f"Generated {len(raw_chunks)} chunks from content.")
+        self.log.info("Generated %s chunks from content.", len(raw_chunks))
 
         chunks = []
         if 'title' in metadata and self.config['add_document_metadata']:

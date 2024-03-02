@@ -1,9 +1,26 @@
-from deckard.core.utils import clear_gpu_memory
-from deckard.core import load_class
-from deckard.core.utils import gen_uuid
+"""Provides the RagBuilder class."""
 from logging import Logger
 
+from deckard.core import load_class
+from deckard.core.utils import clear_gpu_memory
+from deckard.core.utils import gen_uuid
+
 class RagBuilder:
+    """Builds the data for a RAG pipeline.
+
+    Args:
+        config (dict): The pipeline configuration.
+        log (Logger): The logger.
+
+    Attributes:
+        config (dict): The configuration.
+        log (Logger): The logger.
+        database (EmbeddingDatabase): The database for the embeddings.
+        context_database (ContextDatabase): The database for the contexts.
+        encoder (EmbeddingEncoder): The encoder for the embeddings.
+        chunker (Chunker): The chunker for the documents.
+        collectors (list): The collectors for the documents.
+    """
     def __init__(
         self,
         config: dict,
@@ -11,14 +28,15 @@ class RagBuilder:
     ):
         self.log = log
         self.config = config
-        self.initComponents()
+        self._init_rag_builder_components()
 
     def build(self) -> None:
-        self.database.flushData()
-        self.context_database.flushData()
+        """Builds the RAG pipeline."""
+        self.database.flush_data()
+        self.context_database.flush_data()
 
         for collector in self.collectors:
-            self.log.info(f"Processing collector {collector.name()}")
+            self.log.info("Processing collector %s", collector.name())
             first_item = True
             embedding_id = 0
             total_items = collector.len()
@@ -26,17 +44,17 @@ class RagBuilder:
                 self.log.warning("Collector provided no items to process.")
                 return
             processed_items = 0
-            id = 0
+            pipeline_id = 0
             for document_content, metadata in collector:
                 document = {'id': gen_uuid()}
 
                 if document_content is None:
-                    self.log.warning(f"Item {id} is None, skipping.")
+                    self.log.warning("Item %s is None, skipping.", pipeline_id)
                     continue
-                if collector.ignoreItem(document_content):
-                    self.log.info(f"Ignoring item {document_content}")
+                if collector.ignore_item(document_content):
+                    self.log.info("Ignoring item %s", document_content)
                     continue
-                self.log.info(f"Processing item {id} of {total_items}")
+                self.log.info("Processing item %s of %s", pipeline_id, total_items)
                 processed_items += 1
 
                 document['chunks'], document['raw_chunks'], document['metadata'] = self.chunker.generate(
@@ -50,25 +68,26 @@ class RagBuilder:
                         clear_gpu_memory()
                         document['embeddings'].append(self.encoder.encode(chunk))
 
-                    embedding_id = self.database.addEmbeddings(
+                    embedding_id = self.database.add_embeddings(
                         document,
                         embedding_id,
                         first_item
                     )
 
-                    self.context_database.addContexts(
+                    self.context_database.add_contexts(
                         document,
                         first_item
                     )
                     if first_item:
                         first_item = False
-                    id += 1
+                    pipeline_id += 1
 
         ignored_items = total_items - processed_items
-        self.log.info(f"Processed {processed_items} items, ignored {ignored_items} items.")
-        self.log.info("pipeline Processing Complete.")
+        self.log.info("Processed %s items, ignored %s items.", processed_items, ignored_items)
+        self.log.info("Pipeline Processing Complete.")
 
-    def initComponents(self) -> None:
+    def _init_rag_builder_components(self) -> None:
+        """Initializes the components for building the RAG pipeline."""
         self.encoder = load_class(
             self.config['embedding_encoder']['module_name'],
             self.config['embedding_encoder']['class_name'],
@@ -117,4 +136,3 @@ class RagBuilder:
                     ]
                 )
             )
-

@@ -21,9 +21,9 @@ class RagConfigGenerator:
             self.configurations.append(
                 yaml.safe_load(config)
             )
-        log.info(f"Loaded {len(self.configurations)} configurations")
+        log.info("Loaded %s configurations", len(self.configurations))
         if len(self.configurations) > self.MAX_TEST_RUNS:
-            log.error(f"Cowardly refusing to process more than {self.MAX_TEST_RUNS} configurations.")
+            log.error("Cowardly refusing to process more than %s configurations.", self.MAX_TEST_RUNS)
             sys.exit(1)
 
     def __iter__(self) -> None:

@@ -1,4 +1,15 @@
+"""Provides the ResponseProcessor class."""
 class ResponseProcessor:
+    """Processes the response from the LLM, including throwing tripwires.
+
+    Args:
+        response (str): The response to process.
+
+    Attributes:
+        TRIPWIRE_TERMS (list): The terms that will trip the wire.
+        response (str): The response to process.
+        tripwire_thrown (bool): The tripwire thrown flag.
+    """
     TRIPWIRE_TERMS = [
         'fraggle'
     ]
@@ -8,20 +19,31 @@ class ResponseProcessor:
         self.tripwire_thrown = False
         if self.response is None or self.response == '':
             return
-        self.setCleanResponse()
-        self.testTripWire()
+        self._set_clean_response()
+        self._test_tripwire()
 
-    def testTripWire(self) -> None:
+    def _test_tripwire(self) -> None:
+        """Tests the response for tripwires."""
         self.tripwire_thrown = False
         for term in self.TRIPWIRE_TERMS:
             if term in self.response:
                 self.tripwire_thrown = True
 
-    def setCleanResponse(self) -> None:
+    def _set_clean_response(self) -> None:
         self.response = self.response.strip()
 
-    def tripWireThrown(self) -> bool:
+    def was_tripwire_thrown(self) -> bool:
+        """Returns the tripwire thrown flag.
+
+        Returns:
+            bool: Whether the tripwire was thrown.
+        """
         return self.tripwire_thrown
 
-    def getResponse(self) -> str:
+    def get_clean_response(self) -> str:
+        """Returns the clean-safe response.
+
+        Returns:
+            str: The clean response.
+        """
         return self.response
