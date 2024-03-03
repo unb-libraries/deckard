@@ -15,7 +15,7 @@ from deckard.core.builders import build_llm_chains, build_rag_stacks
 from deckard.core.config import get_api_host, get_api_llm_config, get_api_port
 from deckard.core.defaults import default_http_request_timeout
 from deckard.core.time import cur_timestamp, time_since
-from deckard.core.utils import report_memory_use
+from deckard.core.utils import report_memory_use, short_uuid
 from deckard.llm import LLM, LLMQuery
 
 DECKARD_CMD_STRING = 'api:start'
@@ -26,7 +26,7 @@ app = Flask(__name__)
 into the GPU once, we should investigate in this POC what would happen if
 multiple threads tried to use the GPU simultaneously."""
 gpu_lock = Lock()
-log = get_logger()
+logger = get_logger()
 
 @app.before_request
 def before_request():
@@ -41,13 +41,13 @@ def hello():
 
 @app.route("/query/raw", methods=['POST'])
 def rawquery():
-    """Raw LLM query endpoint. Invoke chain directly. Not intended for general use."""
+    """Direct LLM query. Not logged or for general use."""
     data = request.json
     chain = current_app.config['chains']['chain-context-plus']
-    context = data.get('context'),
+    context = data.get('context')
     query = data.get('query')
-    log.info("Raw LLM Query Recieved with context %s and query %s...", context, query)
-    log.info("Waiting for GPU lock...")
+    logger.info("Raw LLM Query Recieved with context %s and query %s...", context, query)
+    logger.info("Waiting for GPU lock...")
     with gpu_lock:
         chain_reponse = chain.invoke(
             {
@@ -77,10 +77,10 @@ def libpages_query():
         pipeline,
         data.get('client'),
         get_api_llm_config(),
-        log
+        logger
     )
     now = cur_timestamp()
-    log.info("Query %s waiting on gpu_lock", query.query_id)
+    logger.info("Query %s waiting on gpu_lock", short_uuid(query.query_id))
     with gpu_lock:
         return query.query(
             query_value,
@@ -92,14 +92,14 @@ def libpages_query():
 
 @app.route("/search", methods=['POST'])
 def db_search_query():
-    """RAG search endpoint. Not intended for general use."""
+    """Search RAG embeddings. Not logged or for general use."""
     data = request.json
     query_value = data.get('query')
     pipeline = data.get('pipeline')
     # @TODO: Error handling for missing endpoint.
     stack = current_app.config['rag_stacks'][pipeline]
-    log.info("Embedding Search Recieved with query %s...", query_value)
-    log.info("Waiting for GPU lock...")
+    logger.info("Embedding Search Recieved: query='%s...", query_value)
+    logger.info("Waiting for GPU lock...")
     with gpu_lock:
         return json_dumper(
             stack.search(query_value).to_dict()
@@ -108,18 +108,18 @@ def db_search_query():
 # API Start-up.
 def start() -> None:
     """Starts the API server."""
-    log.info("Loading LLM...")
-    llm = LLM(log, get_api_llm_config()).get()
+    logger.info("Loading LLM...")
+    llm = LLM(logger, get_api_llm_config()).get()
     app.config['llm'] = llm
 
-    log.info("Building LLM Chains...")
+    logger.info("Building LLM Chains...")
     app.config['chains'] = build_llm_chains(llm)
 
-    log.info("Building Query Stacks...")
-    app.config['rag_stacks'] = build_rag_stacks(log)
+    logger.info("Building Query Stacks...")
+    app.config['rag_stacks'] = build_rag_stacks(logger)
 
-    report_memory_use(log)
-    log.info("Starting API server...")
+    report_memory_use(logger)
+    logger.info("Starting API server...")
     app.run(port=get_api_port())
 
 def check_api_server_exit(log: Logger):

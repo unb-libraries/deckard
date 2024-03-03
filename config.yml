@@ -69,5 +69,5 @@ rag:
         module_name: 'deckard.encoders'
         class_name: 'SentenceTransformerEncoder'
         model: 'BAAI/bge-reranker-large'
-        n_results: 5
+        max_raw_results: 10
 

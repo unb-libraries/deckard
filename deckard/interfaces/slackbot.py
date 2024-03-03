@@ -23,7 +23,7 @@ app = App(
     logger=log
 )
 
-@app.command("/events")
+@app.command("/query_llm")
 def slack_events(ack: callable, respond: callable, command: str) -> None:
     """ Handles events from Slack.
 
@@ -88,4 +88,6 @@ def get_user_usage_example() -> str:
     Returns:
         str: The usage message.
     """
-    return("Usage: /query_llm <pipeline> <query>. %s", available_rag_pipelines_message())
+    return wrap_markdown_formatter(
+        f"Usage: /query_llm <pipeline> <query>. {available_rag_pipelines_message()}"
+    )

@@ -20,6 +20,17 @@ def gen_uuid() -> str:
     """
     return token_hex(32)
 
+def short_uuid(uuid) -> str:
+    """Shortens a UUID.
+
+    Args:
+        uuid (str): The UUID to shorten.
+
+    Returns:
+        str: The shortened UUID.
+    """
+    return uuid[:8]
+
 def report_memory_use(log: Logger) -> None:
     """Reports the memory use.
 

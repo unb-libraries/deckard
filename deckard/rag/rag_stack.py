@@ -14,7 +14,6 @@ class RagStack:
         log (Logger): The logger.
 
     Attributes:
-        MAX_CONTEXTS (int): The maximum number of contexts to return.
         NO_CONTEX_RESPONSE (str): The response for no context found.
         chain (str): The chain for the query.
         config (dict): The configuration.
@@ -35,7 +34,6 @@ class RagStack:
         reranker (Reranker): The reranker for the embeddings.
     """
 
-    MAX_CONTEXTS = 25
     NO_CONTEX_RESPONSE = "Sorry, this question doesn't seem to be answered within the information I was provided."
 
     def __init__(
@@ -100,7 +98,7 @@ class RagStack:
         self.log.info("Querying Vector Database with embeddings: %s [%s]", query, self.pipeline_id)
         vec_results = self.database.query(
             query_vector,
-            limit=self.MAX_CONTEXTS,
+            limit=self.config['reranker']['max_raw_results'],
             max_distance=self.context_max_distance,
         )
 

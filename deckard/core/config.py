@@ -50,7 +50,7 @@ def available_rag_pipelines_message() -> str:
     Returns:
         str: The message.
     """
-    return("Available RAG pipelines: %s", get_rag_pipeline_names())
+    return f"Available RAG pipelines: {get_rag_pipeline_names()}"
 
 def get_rag_pipeline(pipeline_id: str) -> dict:
     """Gets a RAG pipeline from the configuration file.

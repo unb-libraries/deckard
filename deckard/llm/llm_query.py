@@ -4,7 +4,7 @@ from logging import Logger
 from langchain.chains import LLMChain
 
 from deckard.core import json_dumper
-from deckard.core.utils import gen_uuid
+from deckard.core.utils import gen_uuid, short_uuid
 from deckard.query_loggers import QueryLoggerJsonFile
 from deckard.rag import RagStack
 from .response_processor import ResponseProcessor
@@ -50,7 +50,7 @@ class LLMQuery:
         self.pipeline_id = pipeline_id
         self.client = client
         self.llm_config = llm_config
-        self.query_id = ''
+        self.query_id = gen_uuid()
         self.query_value = ''
         self.response = ''
         self.response_fail = False
@@ -78,9 +78,7 @@ class LLMQuery:
             str: The query response.
         """
         self.log.info("New Query: %s [%s]", query, self.pipeline_id)
-
-        self.query_id = gen_uuid()
-        self.log.info("Assigned ID: %s", self.query_id)
+        self.log.info("Assigned ID: %s", short_uuid(self.query_id))
 
         self.query_value = query
         self.log.info("Querying LLM: [%s]", self.pipeline_id)
