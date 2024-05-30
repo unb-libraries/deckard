@@ -1,15 +1,14 @@
 """Tests components without bootstrapping the entire application."""
+
+from deckard.collectors import ArchivesHistoryCollector
 from deckard.core import get_logger
-from deckard.core.config import get_api_llm_config
-from deckard.llm import LLM
+from deckard.core.utils import replace_html_tables_with_csv, open_file_read
 
 DECKARD_CMD_STRING = 'test'
 
 def run():
-    log = get_logger()
-    log.info("Loading LLM...")
-    config = get_api_llm_config()
-    print(config)
-    llm = LLM(log, get_api_llm_config()).get()
-    # llm = LLM(log, get_api_llm_config()).get()
-    # app.config['llm'] = llm
+    file = open_file_read('test.html')
+    text = file.read()
+    file.close()
+    text = replace_html_tables_with_csv(text)
+    print(text)
