@@ -17,23 +17,24 @@ api:
       verbose: True
 data_dir: '/home/core/llm/chatbot/data'
 rag:
-  archiveswikipages:
-    name: 'archiveswikipages'
+  libpages:
+    name: 'libpages'
     rag:
-      name: 'archiveswikipages'
+      name: 'libpages'
       stack:
         module_name: 'deckard.rag'
         class_name: 'RagStack'
       collectors:
         -
-          name: 'Archives Wiki Pages'
+          name: 'Library Pages'
           module_name: 'deckard.collectors'
-          class_name: 'ArchivesHistoryCollector'
-          output: 'collector/archivespages/data/output'
+          class_name: 'LibPagesCollector'
+          output: 'collector/libpages/data/output'
           config:
-            host: 'localhost'
-            port: '3306'
-            database: 'unbhistory'
+            cache_urls: True
+            ignore_links: True
+            images_to_alt: True
+            unicode_snob: True
       context:
         size: 4096
         max_vector_distance: 1.0

@@ -140,5 +140,6 @@ class LLMQuery:
         self.log.info("Responding with: %s", self.response)
         return json_dumper({
             'response': self.response,
-            'fail': self.response_fail
+            'fail': self.response_fail,
+            'metadata': self.response_metadata
         })

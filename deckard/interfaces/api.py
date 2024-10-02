@@ -176,6 +176,16 @@ def post_query_to_api(
     """
     uri = get_api_uri(endpoint)
     log.info("Querying %s...", uri)
+
+    json_query = {
+        "context": context,
+        "client": client,
+        "pipeline": pipeline,
+        "query": query
+    }
+    
+    log.info("JSON query: %s", json_query)
+
     return requests.post(
         uri,
         json={
