@@ -12,7 +12,7 @@ from deckard.core import get_logger, json_dumper
 from deckard.core.builders import build_llm_chains, build_rag_stacks
 from deckard.core.config import get_api_host, get_api_llm_config, get_api_port, get_data_dir, get_gpu_lockfile
 from deckard.core.time import cur_timestamp, time_since
-from deckard.core.utils import report_memory_use
+from deckard.core.utils import report_memory_use, clear_gpu_memory
 from deckard.llm import LLM, LLMQuery
 
 DECKARD_CMD_STRING = 'api:start'
@@ -68,13 +68,18 @@ def libpages_query():
     data = request.json
     query_value = data.get('query')
     pipeline = data.get('pipeline')
-    stack = current_app.config['rag_stacks'][pipeline]
 
     logger.info("Waiting for GPU lock...")
     gpu_request_lock_start = cur_timestamp()
     with gpu_lock:
         gpu_lock_wait_time = time_since(gpu_request_lock_start)
         logger.info("GPU lock acquired after %s seconds.", gpu_lock_wait_time)
+
+        logger.info("Building Query Stacks...")
+        rag_stack_build_start = cur_timestamp()
+        stacks = build_rag_stacks(logger)
+        stack = stacks[pipeline]
+        rag_stack_build_time = time_since(rag_stack_build_start)
 
         llm_model_load_start = cur_timestamp()
         llm = LLM(logger, get_api_llm_config()).get()
@@ -107,6 +112,7 @@ def libpages_query():
     response['time']['model_load_time'] = llm_model_load_time
     response['time']['chain_build_time'] = chain_build_time
     response['time']['gpu_lock_wait_time'] = gpu_lock_wait_time
+    response['time']['rag_stack_build_time'] = rag_stack_build_time
     response['time']['query_build_time'] = query_build_time
     response['time']['inference_time'] = llm_query_time
 
@@ -126,16 +132,22 @@ def db_search_query():
     pipeline = data.get('pipeline')
 
     logger.info("Embedding Search Recieved: query='%s...", query_value)
-    stack = current_app.config['rag_stacks'][pipeline]
 
     logger.info("Waiting for GPU lock...")
     gpu_request_lock_start = cur_timestamp()
     with gpu_lock:
         gpu_lock_wait_time = time_since(gpu_request_lock_start)
+
+        logger.info("Building Query Stacks...")
+        rag_stack_build_start = cur_timestamp()
+        stacks = build_rag_stacks(logger)
+        stack = stacks[pipeline]
+        rag_stack_build_time = time_since(rag_stack_build_start)
+
         search_start = cur_timestamp()
         response = stack.search(query_value).to_dict()
         search_time = time_since(search_start)
-        
+
     if 'error' in response:
         logger.error("Error summarizing document:")
         logger.error(response['error'])
@@ -154,10 +166,6 @@ def start() -> None:
     """Starts the API server."""
     report_memory_use(logger)
     logger.info("Starting API server...")
-
-    logger.info("Building Query Stacks...")
-    app.config['rag_stacks'] = build_rag_stacks(logger)
-
     waitress_serve(app, host=get_api_host(), port=get_api_port())
 
 def check_api_server_exit(log: Logger):
