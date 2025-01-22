@@ -7,8 +7,9 @@ from slack_bolt import App
 from slack_bolt.adapter.socket_mode import SocketModeHandler
 
 from deckard.core import get_logger, get_rag_pipeline, available_rag_pipelines_message
-from deckard.interfaces.api import api_server_up, post_query_to_api
+from deckard.interfaces.api import api_server_up
 from deckard.llm.responses import error_response
+from deckard.interfaces.client import legacy_post_query_to_api
 
 DECKARD_CMD_STRING = 'slackbot:start'
 
@@ -56,7 +57,7 @@ def slack_events(ack: callable, respond: callable, command: str) -> None:
         respond(error_response())
         return
 
-    r = post_query_to_api(
+    r = legacy_post_query_to_api(
         command_data[1],
         '/query',
         'slackbot',

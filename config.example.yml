@@ -15,6 +15,7 @@ api:
       top_k: 40
       top_p: 0.1
       verbose: True
+  gpu_lock_file: 'RTX_4090_1.lock'
 data_dir: '/home/core/llm/chatbot/data'
 rag:
   libpages:
@@ -70,4 +71,9 @@ rag:
         class_name: 'SentenceTransformerEncoder'
         model: 'BAAI/bge-reranker-large'
         max_raw_results: 10
-
+client:
+  timeout: 600
+  uri: 'http://127.0.0.1:3000/deckard/api/v1'
+  user_agent: 'Deckard/0.1 Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'
+  pub_key: ''
+  priv_key: ''

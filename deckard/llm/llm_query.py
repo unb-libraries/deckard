@@ -3,9 +3,7 @@ from logging import Logger
 
 from langchain.chains import LLMChain
 
-from deckard.core import json_dumper
 from deckard.core.utils import gen_uuid, short_uuid
-from deckard.query_loggers import QueryLoggerJsonFile
 from deckard.rag import RagStack
 from .response_processor import ResponseProcessor
 from .responses import error_response, fail_response
@@ -60,28 +58,18 @@ class LLMQuery:
         self,
         query: str,
         chain: LLMChain,
-        start_time: float,
-        lock_wait: float,
-        safeguard: bool=True
     ) -> str:
         """ Queries the LLM chain.
 
         Args:
             query (str): The query to use.
             chain (LLMChain): The LLM chain to use.
-            start_time (float): The time the query was recieved.
-            lock_wait (float): The time the query waited for the GPU lock.
-            safeguard (bool, optional): Whether to safeguard the query against
-                      Potentially offensive responses. Defaults to True.
 
         Returns:
             str: The query response.
         """
-        self.log.info("New Query: %s [%s]", query, self.pipeline_id)
-        self.log.info("Assigned ID: %s", short_uuid(self.query_id))
-
         self.query_value = query
-        self.log.info("Querying LLM: [%s]", self.pipeline_id)
+        self.log.info("New Query: %s [%s]: %s", query, self.pipeline_id, short_uuid(self.query_id))
         stack_response = self.stack.query(query, chain, self.llm_config)
         self.response_metadata.append(self.stack.get_response_metadata())
 
@@ -91,55 +79,19 @@ class LLMQuery:
             self.response_fail = True
 
         processor = ResponseProcessor(stack_response)
-        tripwire_thrown = processor.was_tripwire_thrown()
-        if safeguard and tripwire_thrown:
-            self.response = self.FAIL_RESPONSE_MESSAGE
-            self.response_fail = True
-            self.log.info("Tripwire thrown, responding with: %s", self.response)
-        else:
-            self.response = processor.get_clean_response()
+        self.response = processor.get_clean_response()
 
-        self._log_query(stack_response, tripwire_thrown, start_time, lock_wait)
-        return self._build_query_reponse()
-
-    def _log_query(
-        self,
-        stack_response: str,
-        tripwire_thrown: bool,
-        start_time: float,
-        lock_wait: float
-    ) -> None:
-        """Logs the query.
-
-        Args:
-            stack_response (str): The stack response.
-            tripwire_thrown (bool): Whether the tripwire was thrown.
-            start_time (float): The time the query was recieved.
-            lock_wait (float): The time the query waited for the GPU lock.
-        """
-        QueryLoggerJsonFile(
-            self.query_id,
-            self.client,
-            self.query_value,
-            stack_response,
-            self.response,
-            self.pipeline_id,
-            tripwire_thrown,
-            self.response_metadata,
-            start_time,
-            lock_wait,
-            self.response_fail
-        ).write(self.query_id)
-
-    def _build_query_reponse(self) -> str:
-        """Creates the query response.
-
-        Returns:
-            str: The query response as a JSON string.
-        """
-        self.log.info("Responding with: %s", self.response)
-        return json_dumper({
+        response = {
+            'id': self.query_id,
+            'client': self.client,
+            'query': self.query_value,
             'response': self.response,
-            'fail': self.response_fail,
+            'stack_response': stack_response,
+            'pipeline': self.pipeline_id,
             'metadata': self.response_metadata
-        })
+        }
+
+        if self.response_fail:
+            response['error'] = self.response
+        
+        return response

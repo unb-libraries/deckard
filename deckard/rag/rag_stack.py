@@ -159,13 +159,13 @@ class RagStack:
 
     def query_chain(self) -> None:
         """Queries the LLM chain."""
-        chain_reponse = self.chain.invoke(
+        chain_response = self.chain.invoke(
             {
                 "context": self.context,
                 "query": self.query_value
             }
         )
-        self.response = chain_reponse['text']
+        self.response = chain_response
 
     def get_response(self) -> str:
         """Returns the response.

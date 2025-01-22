@@ -3,7 +3,8 @@ import sys
 from logging import Logger
 
 from deckard.core import get_logger
-from deckard.interfaces.api import check_api_server_exit, post_query_to_api
+from deckard.interfaces.api import check_api_server_exit
+from deckard.interfaces.client import legacy_post_query_to_api
 
 DECKARD_CMD_STRING = 'query:llm'
 
@@ -22,7 +23,7 @@ def query(args: list=sys.argv) -> None:
     except Exception:
         context = ""
 
-    r = post_query_to_api(
+    r = legacy_post_query_to_api(
         args[1],
         '/query/raw',
         'deckard.query:llm',

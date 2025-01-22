@@ -45,3 +45,4 @@ poetry.lock
 /scripts/slackbot.sh
 
 tunnel.sh
+config.yml

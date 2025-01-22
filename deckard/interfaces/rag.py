@@ -1,14 +1,19 @@
 """Provides a command to query RAG pipelines."""
 import sys
+
 from logging import Logger
+import requests
 
 from deckard.core import get_logger
 from deckard.core import get_rag_pipelines
-from deckard.interfaces.api import check_api_server_exit, post_query_to_api
+from deckard.interfaces.api import check_api_server_exit
+from deckard.core.config import get_client_keypair, get_client_uri, get_client_user_agent, get_client_timeout
+from deckard.core.jsoncore import json_dumper
+from deckard.interfaces.client import query_api
 
 DECKARD_CMD_STRING = 'query:rag'
 
-def query(args: list=sys.argv):
+def rag_query(args: list=sys.argv):
     """Queries RAG pipelines.
 
     Args:
@@ -18,14 +23,14 @@ def query(args: list=sys.argv):
     validate_args(args, log)
     check_api_server_exit(log)
 
-    r = post_query_to_api(
-        args[2],
-        '/query',
-        'deckard.query:rag',
-        log,
-        pipeline=args[1]
-    )
-    print(r.text)
+    query_data = {
+        "context": '',
+        "pipeline": args[1],
+        "query": args[2]
+    }
+
+    query_api(query_data, log)
+
 
 def validate_args(args: list, log: Logger) -> None:
     """Validates the arguments for the command and exits if invalid.

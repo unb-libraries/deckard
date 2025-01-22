@@ -4,7 +4,8 @@ import sys
 from logging import Logger
 
 from deckard.core import available_rag_pipelines_message, get_logger, get_rag_pipeline
-from deckard.interfaces.api import check_api_server_exit, post_query_to_api
+from deckard.interfaces.api import check_api_server_exit
+from deckard.interfaces.client import legacy_post_query_to_api
 
 DECKARD_CMD_STRING = 'search:embeddings'
 
@@ -18,7 +19,7 @@ def search(args: list=sys.argv) -> None:
     validate_args(args, log)
     check_api_server_exit(log)
 
-    r = post_query_to_api(
+    r = legacy_post_query_to_api(
         args[2],
         '/search',
         'deckard.%s',DECKARD_CMD_STRING,
