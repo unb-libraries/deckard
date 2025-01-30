@@ -33,6 +33,15 @@ def hello():
     """Default endpoint."""
     return "Endpoint Disabled."
 
+@app.route('/health', methods=['GET'])
+def health_check():
+    """Health check endpoint."""
+    response = {
+        "status": "healthy",
+        "message": "Service is running"
+    }
+    return Response(json_dumper(response, pretty=False), status=200, mimetype='application/json')
+
 @app.route("/query/raw", methods=['POST'])
 def rawquery():
     """Direct LLM query. Not logged or for general use."""
