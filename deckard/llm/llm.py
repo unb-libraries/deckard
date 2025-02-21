@@ -66,5 +66,6 @@ class LLM:
             temperature=self.config['temperature'],
             top_k=self.config['top_k'],
             top_p=self.config['top_p'],
+            min_p=self.config['min_p'],
             verbose=self.config['verbose']
         )

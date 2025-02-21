@@ -1,19 +1,20 @@
 api:
-  host: '127.0.0.1'
+  host: '0.0.0.0'
   port: 5000
   llm:
     model:
       type: "llama"
-      repo: "TheBloke/Nous-Hermes-Llama2-GGUF"
-      filename: "nous-hermes-llama2-13b.Q6_K.gguf"
+      repo: "NousResearch/Hermes-3-Llama-3.1-8B-GGUF"
+      filename: "Hermes-3-Llama-3.1-8B.Q8_0.gguf"
       max_response_tokens: 1024
       n_batch: 2048
-      n_ctx: 4096
+      n_ctx: 8192
       n_gpu_layers: -1
       repeat_penalty: 1.176
-      temperature: 0.71
+      temperature: 0.8
       top_k: 40
-      top_p: 0.1
+      top_p: 0.95
+      min_p: 0.05
       verbose: True
   gpu_lock_file: 'RTX_4090_1.lock'
 data_dir: '/home/core/llm/chatbot/data'
@@ -37,7 +38,7 @@ rag:
             images_to_alt: True
             unicode_snob: True
       context:
-        size: 4096
+        size: 8192
         max_vector_distance: 1.0
       chunker:
         module_name: 'deckard.chunkers'
@@ -62,14 +63,14 @@ rag:
       embedding_encoder:
         module_name: 'deckard.encoders'
         class_name: 'SentenceTransformerEncoder'
-        model: 'avsolatorio/GIST-large-Embedding-v0'
+        model: 'intfloat/multilingual-e5-large-instruct'
       query_processor:
         module_name: 'deckard.query_processors'
         class_name: 'StandardQueryProcessor'
       reranker:
         module_name: 'deckard.encoders'
         class_name: 'SentenceTransformerEncoder'
-        model: 'BAAI/bge-reranker-large'
+        model: 'BAAI/bge-reranker-v2-m3'
         max_raw_results: 10
 client:
   timeout: 600
