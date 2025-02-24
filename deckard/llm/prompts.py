@@ -9,7 +9,7 @@ def get_old_context_only_prompt() -> str:
     """
     return """### Instruction:
     Read the context below and respond with an answer to the question. If the question cannot be answered based on
-    the context alone or the context does not explicitly say the answer to the question, write "%s"
+    the context alone or the context does not explicitly say the answer to the question, write only "%s". Do not explain why.
 
     ### Input:
     Context: {context}
@@ -25,20 +25,19 @@ def get_context_only_prompt() -> str:
         str: The prompt.
     """
     return """<|begin_of_text|><|start_header_id|>system<|end_header_id|>
-
-You are a helpful AI assistant for answering questions based on user provided context. You will only use the provided text to answer the questions. Do not say "Based on the provided text," or "According to the text," or anything similar. Just provide the answer. Do not provide personal opinions or biases. If the answer is not available in the text you will answer as "%s" <|eot_id|><|start_header_id|>user<|end_header_id|>
-
-Please answer the following question based on the text I am providing only. 
+You are a helpful AI assistant for answering a user question based on provided context only. Answer concisely without unnecessary prefatory statements. Use only the provided context to answer the questions and not any prior knowledge. If the answer is not fully found in the context, say only "%s" and no more.<|eot_id|>
+<|start_header_id|>user<|end_header_id|>
+Answer concisely without unnecessary prefatory statements. If the answer is not available in the context, just say "%s".
 
 Question :
 
 {query}
 
-Text :
+Context :
 
 {context}
 
-<|eot_id|><|start_header_id|>assistant<|end_header_id|>""" % (fail_response())
+<|eot_id|><|start_header_id|>assistant<|end_header_id|>""" % (fail_response(), fail_response())
 
 def get_old_context_plus_prompt() -> str:
     """Returns the prompt that instructs the LLM to respond however it can.
@@ -47,7 +46,7 @@ def get_old_context_plus_prompt() -> str:
         str: The prompt.
     """
     return """### Instruction:
-    Read the context below and respond with an answer to the question. If you don't know the answer, just say that you don't know, don't try to make up an answer.
+    Read the context below and respond with an answer to the question. Respond only with information you learn within the context. If you don't know the answer, just say that you don't know, don't try to make up an answer.
 
     ### Input:
     Context: {context}
@@ -71,3 +70,34 @@ def get_context_plus_prompt() -> str:
     Question: {query}
 
     Response: """
+
+def get_verify_response_prompt() -> str:
+    """Returns the prompt that instructs the LLM to determine if the previous query answered the question.
+
+    Returns:
+        str: The prompt.
+    """
+    return """
+You are an AI assistant evaluating whether a given response directly answers the original question. If the response contains "there is no information about", consider the answer irrelevant.
+
+## Task:
+Return ONLY a structured JSON object evaluating whether the response is a direct and relevant answer.
+
+## JSON Output Format:
+```
+{{
+  "is_answer": <true/false>,
+  "reason": "<brief explanation>"
+}}
+```
+
+## Inputs:
+<|start_header_id|>Question:<|end_header_id|>
+{query}
+
+<|start_header_id|>Response:<|end_header_id|>
+{response}
+
+## Output:
+Respond **only** with the JSON object in the specified format. Do not include any additional text.
+"""

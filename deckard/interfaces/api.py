@@ -13,7 +13,7 @@ from deckard.core.builders import build_llm_chains, build_rag_stacks
 from deckard.core.config import get_api_host, get_api_llm_config, get_api_port, get_data_dir, get_gpu_lockfile
 from deckard.core.time import cur_timestamp, time_since
 from deckard.core.utils import report_memory_use, clear_gpu_memory
-from deckard.llm import LLM, LLMQuery
+from deckard.llm import LLM, LLMQuery, ResponseVerifier
 
 DECKARD_CMD_STRING = 'api:start'
 
@@ -117,6 +117,40 @@ def libpages_query():
         )
         llm_query_time = time_since(llm_query_start)
 
+        # We now need to verify that the response actually answers the question.
+        # We do this by re-prompting the LLM 
+        logger.info("Determining if response answered question...")
+        response_value = response['response']
+        reason_query_start = cur_timestamp()
+        verifier = ResponseVerifier(
+            query_value,
+            response_value,
+            chains['chain-verify-response'],
+            logger
+        )
+        is_answer, reason, answer_data = verifier.response_answers_question()
+        reason_query_time = time_since(reason_query_start)
+
+        if not is_answer:
+            logger.info("Response did NOT answer question...")
+            response['response'] = llm_query.FAIL_RESPONSE_MESSAGE
+            response['is_answer'] = False
+            response['not_answer_reason'] = reason
+        else:
+            logger.info("Response did answer question...")
+            response['is_answer'] = True
+            response['not_answer_reason'] = None
+        response['answer_data'] = answer_data
+
+    postprocess_start_time = cur_timestamp()
+    # Strip nonsense like "Based on the provided context,"
+    obtuse_prefixes = [
+        'Based on the provided context,'
+    ]
+    for prefix in obtuse_prefixes:
+        response['response'] = response['response'].replace(prefix, '').strip()
+    postprocess_time = time_since(postprocess_start_time)
+
     response['time'] = {}
     response['time']['model_load_time'] = llm_model_load_time
     response['time']['chain_build_time'] = chain_build_time
@@ -124,10 +158,15 @@ def libpages_query():
     response['time']['rag_stack_build_time'] = rag_stack_build_time
     response['time']['query_build_time'] = query_build_time
     response['time']['inference_time'] = llm_query_time
+    response['time']['reason_query_time'] = reason_query_time
+    response['time']['postprocess_time'] = postprocess_time
+
+    response['time']['total'] = time_since(g.start)
 
     if 'error' in response:
         logger.error("Error in LLM query:")
         logger.error(response['error'])
+        response['is_answer'] = False
         return Response(json_dumper(response, pretty=False), status=500, mimetype='application/json')    
 
     write_response_data(response)

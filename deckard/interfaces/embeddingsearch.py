@@ -22,7 +22,7 @@ def search(args: list=sys.argv) -> None:
     r = legacy_post_query_to_api(
         args[2],
         '/search',
-        'deckard.%s',DECKARD_CMD_STRING,
+        'search:embeddings',
         log,
         pipeline=args[1]
     )

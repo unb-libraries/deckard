@@ -170,7 +170,8 @@ class LanceDB:
         Returns:
             list: The results of the query.
         """
-        results = self.embeddings_table.search(query).limit(limit).to_df()
+        results = self.embeddings_table.search(query).distance_range(upper_bound=max_distance).limit(limit).to_df()
+        # results = self.embeddings_table.search(query).distance_range(upper_bound=max_distance).to_df()
         # Instead of specifying columns, we return all data but the vector.
         results = results.drop(columns=['vector'])
-        return results[results['_distance'] <= max_distance]
+        return results

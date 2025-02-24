@@ -35,6 +35,7 @@ class RagStack:
     """
 
     NO_CONTEX_RESPONSE = "Sorry, this question doesn't seem to be answered within the information I was provided."
+    MAX_CONTEXTS = 10
 
     def __init__(
         self,
@@ -95,7 +96,7 @@ class RagStack:
         self.log.info("Generating embedding for query: %s (%s) [%s]", query, embedding_query, self.pipeline_id)
         query_vector = self.encoder.encode(embedding_query)
 
-        self.log.info("Querying Vector Database with embeddings: %s [%s]", query, self.pipeline_id)
+        self.log.info("Querying Vector Database with embeddings: %s [%s] (Max Distance: %s)", query, self.pipeline_id, self.context_max_distance)
         vec_results = self.database.query(
             query_vector,
             limit=self.config['reranker']['max_raw_results'],
@@ -125,6 +126,7 @@ class RagStack:
 
         self.log.info("Querying Chain for query: %s [%s]", query, self.pipeline_id)
         self.query_chain()
+
         return self.response
 
     def search(self, query: str) -> DataFrame:
@@ -145,7 +147,7 @@ class RagStack:
             limit=self.MAX_CONTEXTS,
             max_distance=self.context_max_distance,
         )
-        return vec_results.drop(columns=['vector'])
+        return vec_results
 
     def init_query(self) -> None:
         """Initializes the query."""

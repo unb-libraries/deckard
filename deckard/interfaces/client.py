@@ -90,4 +90,4 @@ def legacy_get_api_uri(endpoint: str='/query/raw') -> str:
     Returns:
         str: The URI for the API server.
     """
-    return 'http://' + get_api_host() + ':' + str(get_api_port()) + endpoint
+    return 'http://localhost:5000/' + endpoint
