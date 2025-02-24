@@ -29,7 +29,7 @@ poetry shell
 
 ```
 CUDACXX=/home/core/local/cuda-12.2/bin/nvcc NVCC_PREPEND_FLAGS='-ccbin /usr/bin/g++-12' CMAKE_ARGS="-DGGML_CUDA=on -DCMAKE_CUDA_ARCHITECTURES=all-major -DCMAKE_C_COMPILER=/usr/bin/gcc-12 -DCMAKE_CXX_COMPILER=/usr/bin/g++-12"  FORCE_CMAKE=1 \
-pip install llama-cpp-python==0.3.6 --no-cache-dir --force-reinstall --upgrade
+pip install llama-cpp-python==0.3.7 --no-cache-dir --force-reinstall --upgrade
 ```
 
 ### Issues: torch

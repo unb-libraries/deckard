@@ -23,6 +23,10 @@ Chunkers divide data units into fragments of the original data unit. These fragm
 ### Encoders
 Encoders map chunks into vector representations.
 
+jina-embeddings-v3
+mxbai-embed-large-v1
+
+
 ### Databases
 Database modules provide API interfaces into local storage.
 
