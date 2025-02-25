@@ -116,7 +116,7 @@ class SolrClient:
         # Solr query
         solr_query = {
             "q": f'document_stemmed:"{query}"^{exact_boost} OR (document_ngram:"{no_whitespace_query}")',
-            "fl": "id,document_id,document,score",
+            "fl": "id,document_id,chunk_id,document,score,metadata",
             "rows": top_n
         }
 
@@ -125,6 +125,10 @@ class SolrClient:
 
         if not results:
             return []
+
+        # Convert metadata field from raw json to dict
+        for doc in results:
+            doc["metadata"] = json.loads(doc["metadata"][0])
 
         scores = np.array([doc["score"] for doc in results])
         normalized_scores = scores / np.max(scores)
