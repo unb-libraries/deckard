@@ -1,6 +1,7 @@
 import json
 import sys
 import requests
+import re
 import numpy as np
 import uuid
 import requests
@@ -88,21 +89,8 @@ class SolrIndexer:
     
 
 class SolrClient:
-    def __init__(self, solr_url="http://localhost:8983/solr/my_core", ngram_min=3, ngram_max=10):
+    def __init__(self, solr_url="http://localhost:8983/solr/my_core"):
         self.solr_url = solr_url
-        self.ngram_min = ngram_min
-        self.ngram_max = ngram_max
-
-    def _generate_ngrams(self, text):
-        """Generates a list of n-grams from the query text."""
-        text = text.lower()
-        ngrams = set()
-
-        for size in range(self.ngram_min, min(len(text), self.ngram_max) + 1):
-            for i in range(len(text) - size + 1):
-                ngrams.add(text[i : i + size])
-
-        return list(ngrams)
 
     def test_connection(self):
         """Tests the Solr connection by checking if the core is accessible."""
@@ -118,14 +106,14 @@ class SolrClient:
 
     def search(self, query, top_n=10, exact_boost=3.0):
         """Searches both document (boosted) and document_ngram fields."""
-        # Generate n-grams from the query
-        ngram_tokens = self._generate_ngrams(query)
-        ngram_query = " OR ".join([f'document_ngram:"{token}"' for token in ngram_tokens])
+
+        ## Use regex to replace whitespace in the query
+        no_whitespace_query = re.sub(r'[^\w]', '', query)
 
         # Solr query
         solr_query = {
-            "q": f'document:"{query}"^{exact_boost} OR ({ngram_query})',
-            "fl": "id,document_id,chunk_id,document,score",
+            "q": f'document_stemmed:"{query}"^{exact_boost} OR (document_ngram:"{no_whitespace_query}")',
+            "fl": "id,document_id,document,score",
             "rows": top_n
         }
 
