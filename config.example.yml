@@ -11,7 +11,7 @@ api:
       n_ctx: 8192
       n_gpu_layers: -1
       repeat_penalty: 1.176
-      temperature: 0.8
+      temperature: 0.2
       top_k: 40
       top_p: 0.95
       min_p: 0.05
@@ -60,10 +60,14 @@ rag:
         module_name: 'deckard.databases'
         class_name: 'LanceDB'
         name: 'libpages'
+      sparse_search:
+          module_name: 'deckard.sparse'
+          class_name: 'Solr'
+          uri: 'http://localhost:3514/solr/deckard'
       embedding_encoder:
         module_name: 'deckard.encoders'
         class_name: 'SentenceTransformerEncoder'
-        model: 'intfloat/multilingual-e5-large-instruct'
+        model: 'mixedbread-ai/mxbai-embed-large-v1'
       query_processor:
         module_name: 'deckard.query_processors'
         class_name: 'StandardQueryProcessor'
@@ -74,7 +78,7 @@ rag:
         max_raw_results: 10
 client:
   timeout: 600
-  uri: 'http://127.0.0.1:3000/deckard/api/v1'
+  uri: 'http://127.0.0.1:5000/deckard/api/v1'
   user_agent: 'Deckard/0.1 Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'
   pub_key: ''
   priv_key: ''

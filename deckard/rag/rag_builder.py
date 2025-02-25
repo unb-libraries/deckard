@@ -34,6 +34,7 @@ class RagBuilder:
         """Builds the RAG pipeline."""
         self.database.flush_data()
         self.context_database.flush_data()
+        self.sparse_search.flush_data()
 
         for collector in self.collectors:
             self.log.info("Processing collector %s", collector.name())
@@ -78,6 +79,11 @@ class RagBuilder:
                         document,
                         first_item
                     )
+
+                    self.sparse_search.index_document(
+                        document
+                    )
+
                     if first_item:
                         first_item = False
                     pipeline_id += 1
@@ -96,6 +102,7 @@ class RagBuilder:
                 self.log
             ]
         )
+
         self.database = load_class(
             self.config['embedding_database']['module_name'],
             self.config['embedding_database']['class_name'],
@@ -105,6 +112,17 @@ class RagBuilder:
                 True
             ]
         )
+
+        self.sparse_search = load_class(
+            self.config['sparse_search']['module_name'],
+            self.config['sparse_search']['class_name'],
+            [
+                self.config['sparse_search']['uri'],
+                self.log,
+                True
+            ]
+        )
+
         self.context_database = load_class(
             self.config['context_database']['module_name'],
             self.config['context_database']['class_name'],
