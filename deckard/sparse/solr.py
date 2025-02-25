@@ -42,6 +42,9 @@ class Solr(SparseSearch):
             self.log.error("Solr core is not accessible. Exiting.")
             sys.exit(1)
 
+    def search(self, query, top_n=10, exact_boost=3.0):
+        return self.client.search(query, top_n, exact_boost)
+
     def flush_data(self):
         self.client.flush_index()
 

@@ -106,9 +106,13 @@ class RagStack:
         self.log.info("Reranking Results: %s (%s) [%s]", query, embedding_query, self.pipeline_id)
         reranked_results = self.reranker.rerank(embedding_query, vec_results)
 
+        self.log.info("Querying Sparse Search for query: %s [%s]", query, self.pipeline_id)
+        sparse_results = self.sparse_search.search(query)
+
         self.log.info("Generating context for query: %s [%s]", query, self.pipeline_id)
         self.context, context_metadata = self.context_builder.build_context(
             reranked_results,
+            sparse_results,
             self.context_database,
             self.context_size
         )
@@ -229,6 +233,17 @@ class RagStack:
                 True
             ]
         )
+
+        self.sparse_search = load_class(
+            self.config['sparse_search']['module_name'],
+            self.config['sparse_search']['class_name'],
+            [
+                self.config['sparse_search']['uri'],
+                self.log,
+                True
+            ]
+        )
+
         self.context_builder = load_class(
             self.config['context_builder']['module_name'],
             self.config['context_builder']['class_name'],
