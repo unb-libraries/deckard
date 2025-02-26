@@ -1,4 +1,3 @@
-"""Provides the CharacterTextSplitterChunker class."""
 import hashlib
 import os
 from logging import Logger

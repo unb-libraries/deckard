@@ -1,4 +1,3 @@
-"""Provides the StandardQueryProcessor class."""
 from .raw import RawQueryProcessor
 
 class StandardQueryProcessor(RawQueryProcessor):

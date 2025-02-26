@@ -1,4 +1,3 @@
-"""Provides the DatabaseCollector class."""
 import hashlib
 import os
 import time
@@ -8,6 +7,9 @@ from deckard.core import json_dumper, get_data_dir
 from deckard.core.utils import open_file_write
 
 class DatabaseCollector:
+    """Collects data from a generic database. This is a base class.
+    """
+
     SOURCE_SLUG = 'generic-database'
 
     def __init__(self, config: dict, log: Logger) -> None:

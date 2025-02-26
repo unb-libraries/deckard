@@ -1,10 +1,11 @@
-"""Provides the DatabaseCollector class."""
 from logging import Logger
 
-from deckard.core import json_dumper
 from .database import DatabaseCollector
 
 class MySQLCollector(DatabaseCollector):
+    """Collects data from a MySQL database. This is a base class
+    """
+
     SOURCE_SLUG = 'generic-mysql-database'
     ITEM_QUERY_SQL = ''
 

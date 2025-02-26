@@ -1,4 +1,3 @@
-"""Provides the LLM class."""
 import os
 from logging import Logger
 

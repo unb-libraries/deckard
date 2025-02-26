@@ -1,4 +1,3 @@
-"""Provides the RawQueryProcessor class."""
 from logging import Logger
 
 class RawQueryProcessor:

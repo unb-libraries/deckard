@@ -1,4 +1,3 @@
-"""Provides the ResponseProcessor class."""
 class ResponseProcessor:
     """Processes the response from the LLM.
 

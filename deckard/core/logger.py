@@ -1,5 +1,5 @@
-"""Provides the logger for the application."""
 import logging
+
 from logging import Logger
 
 def get_logger() -> Logger:

@@ -1,10 +1,9 @@
-"""Provides the core API server for Deckard."""
 import socket
 import sys
 
 from logging import Logger
 from filelock import FileLock
-from flask import current_app, Flask, g, request, Response
+from flask import Flask, Response, g, request
 from os import makedirs
 from waitress import serve as waitress_serve
 

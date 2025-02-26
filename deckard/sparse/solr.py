@@ -68,7 +68,6 @@ class SolrIndexer:
             }
             response = requests.post(f"{self.solr_url}/update", json=[doc])
 
-        # Commit only if explicitly requested
         if commit:
             self.commit()
 
@@ -84,12 +83,10 @@ class SolrIndexer:
         delete_query = {"delete": {"query": f"document_id:{document_id}"}}
         response = requests.post(f"{self.solr_url}/update", json=delete_query)
 
-        # Commit only if explicitly requested
         if commit:
             self.commit()
 
         return response.json()
-    
 
 class SolrClient:
     def __init__(self, solr_url="http://localhost:8983/solr/my_core"):

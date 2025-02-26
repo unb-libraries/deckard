@@ -1,7 +1,5 @@
-"""Provides the RAGStack class."""
-from logging import Logger
-
 from langchain.chains import LLMChain
+from logging import Logger
 from pandas import DataFrame
 
 from deckard.core import load_class

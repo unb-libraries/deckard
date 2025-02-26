@@ -1,4 +1,3 @@
-"""Provides the RagBuilder class."""
 from logging import Logger
 
 from deckard.core import load_class

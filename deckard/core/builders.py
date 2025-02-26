@@ -1,12 +1,10 @@
-"""Provides the builders for the core components of Deckard."""
 from logging import Logger
-
 from langchain_community.llms import LlamaCpp
-from langchain.chains import LLMChain
 from langchain.prompts import PromptTemplate
 from langchain_core.runnables import RunnableSequence
 
 from deckard.llm import get_context_only_prompt, get_context_plus_prompt, response_addresses_query_prompt, malicious_classification_prompt
+
 from .config import get_rag_pipelines
 
 def build_rag_stacks(log: Logger) -> dict:

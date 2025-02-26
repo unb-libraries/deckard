@@ -1,19 +1,18 @@
-"""Provides the DatabaseCollector class."""
-import hashlib
-import os
-import time
-from logging import Logger
-
 import html2text
-from markdown_plain_text.extention import convert_to_plain_text
 import mysql.connector
+import os
 
-from deckard.core import json_dumper, get_data_dir
-from deckard.core.utils import open_file_write, replace_html_tables_with_csv
+from logging import Logger
+from markdown_plain_text.extention import convert_to_plain_text
+
+from deckard.core.utils import replace_html_tables_with_csv
 
 from .mysql import MySQLCollector
 
 class ArchivesHistoryCollector(MySQLCollector):
+    """Collects data from the UNB Archives Wiki History database.
+    """
+
     SOURCE_SLUG = 'unbhistory'
 
     ITEM_QUERY_SQL = """

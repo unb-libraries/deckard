@@ -1,4 +1,3 @@
-"""Provides the LibPagesCollector class."""
 import os
 
 from deckard.core import get_data_dir

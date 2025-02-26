@@ -1,9 +1,8 @@
-"""Provides the ParentDocumentAssembler class."""
 from typing import TypeVar
-
 from pandas import DataFrame as Dataframe
 
 from deckard.databases.context_database import ContextDatabase
+
 from .simple_aggregator import SimpleContextAggregator
 
 T = TypeVar('T', str, dict)

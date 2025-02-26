@@ -1,15 +1,14 @@
-"""Provides the WebPageCollector class."""
 import hashlib
+import html2text
 import json
 import os
+import requests
 import time
+
+from bs4 import BeautifulSoup
 from logging import Logger
 from pathlib import Path
 from typing import TypeVar
-
-import html2text
-import requests
-from bs4 import BeautifulSoup
 
 from deckard.core import json_dumper
 from deckard.core.utils import open_file_read
@@ -17,7 +16,7 @@ from deckard.core.utils import open_file_read
 T = TypeVar('T', str, object)
 
 class WebPageCollector:
-    """Collects web pages.
+    """Collects web pages. This is a base class.
 
     Args:
         config (dict): The configuration for the collector.

@@ -1,4 +1,3 @@
-"""Provides the ContextDatabase class."""
 class ContextDatabase:
     """Provides a base class for context databases."""
     def __init__(self):

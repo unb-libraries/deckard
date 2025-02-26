@@ -1,4 +1,3 @@
-"""Provides the SimpleContextAggregator class."""
 from typing import TypeVar
 
 T = TypeVar('T', str, dict)
