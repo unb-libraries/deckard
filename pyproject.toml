@@ -39,7 +39,6 @@ plain-text-markdown-extention = {git = "git@github.com:kostyachum/python-markdow
 "query:rag" = "deckard.interfaces.rag:rag_query"
 "search:embeddings" = "deckard.interfaces.embeddingsearch:search"
 "slackbot:start" = "deckard.interfaces.slackbot:start"
-"test" = "deckard.interfaces.test:run"
 
 [build-system]
 requires = ["poetry-core"]
