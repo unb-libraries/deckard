@@ -174,12 +174,30 @@ def libpages_query():
 
     postprocess_start_time = cur_timestamp()
 
+    # TODO: Migrate to response_processor arch.
     # Strip nonsense like "Based on the provided context,"
     obtuse_prefixes = [
         'Based on the provided context,'
     ]
     for prefix in obtuse_prefixes:
         response['response'] = response['response'].replace(prefix, '').strip()
+
+    # Check if the response contains multiple lines, and the first words of the line start with prefixes
+    obtuse_line_beginnings = [
+        'The provided context does not'
+    ]
+    response_modified = False
+    response_lines = response['response'].split('\n')
+    for i, line in enumerate(response_lines):
+        # Skip the first line
+        if i == 0:
+            continue
+        for prefix in obtuse_line_beginnings:
+            if line.startswith(prefix):
+                response_modified = True
+                response_lines[i] = ''
+    if response_modified:
+        response['response'] = '\n'.join(response_lines).strip()
 
     postprocess_time = time_since(postprocess_start_time)
 
