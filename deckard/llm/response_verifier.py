@@ -1,14 +1,19 @@
-"""Provides the ResponseProcessor class."""
-from langchain.chains import LLMChain
-from logging import Logger
 import json
 import re
 
+from langchain.chains import LLMChain
+from logging import Logger
+
+from deckard.core import extract_first_json_block
+
 class ResponseVerifier:
-    """Processes the response from the LLM.
+    """Processes the response from the LLM and determines if it addresses the query.
 
     Args:
+        query (str): The query to process.
         response (str): The response to process.
+        chain (LLMChain): The LLM chain to use.
+        logger (Logger): The logger to use.
 
     Attributes:
         response (str): The response to process.
@@ -34,7 +39,7 @@ class ResponseVerifier:
         self.response = chain_response
         self.logger.info(f"Verification Response: {self.response}")
         try:
-            json_response = self.extract_first_json()
+            json_response = extract_first_json_block(self.response, "Verification Reponse", self.logger)
             if json_response is None:
                 reason = "Error parsing verification response: no JSON found in extracted text"
                 self.logger.error(reason)
@@ -50,27 +55,34 @@ class ResponseVerifier:
             self.logger.error(reason)
             return False, reason, json.loads("{}")
 
-    def extract_first_json(self):
-        try:
-            json_pattern = r'\{.*?\}'
-            matches = re.findall(json_pattern, self.response, re.DOTALL)
-            
-            if not matches:
-                self.logger.error(f"Error parsing verification response: No JSON found")
-                return None
-            
-            for match in matches:
-                try:
-                    parsed_json = json.loads(match)
-                    return parsed_json
-                except json.JSONDecodeError as je:
-                    self.logger.error(f"Error parsing JSON: {je}")
-                    continue 
+def response_addresses_query_prompt() -> str:
+    """Returns the prompt that determines if a query addresses a question with useful information.
 
-            self.logger.error(f"Error parsing verification response: No valid JSON found")
-            return None
+    Returns:
+        str: The prompt.
+    """
 
-        except Exception as e:
-            self.logger.error(f"Error: {e}")
-            return None
+    return """
+You are an AI assistant evaluating whether a given response directly answers the original question. If the response contains "there is no information about", consider the answer irrelevant.
 
+## Task:
+Return ONLY a structured JSON object evaluating whether the response is a direct and relevant answer.
+
+## JSON Output Format:
+```
+{{
+  "is_answer": <true/false>,
+  "reason": "<brief explanation>"
+}}
+```
+
+## Inputs:
+<|start_header_id|>Question:<|end_header_id|>
+{query}
+
+<|start_header_id|>Response:<|end_header_id|>
+{response}
+
+## Output:
+Respond **only** with the JSON object in the specified format. Do not include any additional text.
+"""

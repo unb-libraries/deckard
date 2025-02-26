@@ -6,7 +6,7 @@ from langchain.chains import LLMChain
 from langchain.prompts import PromptTemplate
 from langchain_core.runnables import RunnableSequence
 
-from deckard.llm import get_context_only_prompt, get_context_plus_prompt, get_verify_response_prompt
+from deckard.llm import get_context_only_prompt, get_context_plus_prompt, response_addresses_query_prompt, malicious_classification_prompt
 from .config import get_rag_pipelines
 
 def build_rag_stacks(log: Logger) -> dict:
@@ -49,7 +49,11 @@ def build_llm_chains(llm: LlamaCpp) -> list[RunnableSequence]:
     )
     chains['chain-verify-response'] = build_llm_chain(
         llm,
-        get_verify_response_prompt()
+        response_addresses_query_prompt()
+    )
+    chains['malicious'] = build_llm_chain(
+        llm,
+        malicious_classification_prompt()
     )
     return chains
 

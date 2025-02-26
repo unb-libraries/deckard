@@ -37,6 +37,7 @@ class LLMQuery:
 
     def __init__(
         self,
+        query_id: str,
         stack: RagStack,
         pipeline_id: str,
         client: str,
@@ -48,7 +49,7 @@ class LLMQuery:
         self.pipeline_id = pipeline_id
         self.client = client
         self.llm_config = llm_config
-        self.query_id = gen_uuid()
+        self.query_id = query_id
         self.query_value = ''
         self.response = ''
         self.response_fail = False

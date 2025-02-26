@@ -70,34 +70,3 @@ def get_context_plus_prompt() -> str:
     Question: {query}
 
     Response: """
-
-def get_verify_response_prompt() -> str:
-    """Returns the prompt that instructs the LLM to determine if the previous query answered the question.
-
-    Returns:
-        str: The prompt.
-    """
-    return """
-You are an AI assistant evaluating whether a given response directly answers the original question. If the response contains "there is no information about", consider the answer irrelevant.
-
-## Task:
-Return ONLY a structured JSON object evaluating whether the response is a direct and relevant answer.
-
-## JSON Output Format:
-```
-{{
-  "is_answer": <true/false>,
-  "reason": "<brief explanation>"
-}}
-```
-
-## Inputs:
-<|start_header_id|>Question:<|end_header_id|>
-{query}
-
-<|start_header_id|>Response:<|end_header_id|>
-{response}
-
-## Output:
-Respond **only** with the JSON object in the specified format. Do not include any additional text.
-"""

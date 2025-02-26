@@ -12,8 +12,8 @@ from deckard.core import get_logger, json_dumper
 from deckard.core.builders import build_llm_chains, build_rag_stacks
 from deckard.core.config import get_api_host, get_api_llm_config, get_api_port, get_data_dir, get_gpu_lockfile
 from deckard.core.time import cur_timestamp, time_since
-from deckard.core.utils import report_memory_use, clear_gpu_memory
-from deckard.llm import LLM, LLMQuery, ResponseVerifier
+from deckard.core.utils import report_memory_use, gen_uuid
+from deckard.llm import LLM, LLMQuery, ResponseVerifier, MaliciousClassifier, fail_response
 
 DECKARD_CMD_STRING = 'api:start'
 
@@ -77,6 +77,11 @@ def libpages_query():
     data = request.json
     query_value = data.get('query')
     pipeline = data.get('pipeline')
+    response = {}
+
+    response['id'] = gen_uuid()
+    response['query'] = query_value
+    response['pipeline'] = pipeline
 
     logger.info("Waiting for GPU lock...")
     gpu_request_lock_start = cur_timestamp()
@@ -99,56 +104,84 @@ def libpages_query():
         chains = build_llm_chains(llm)
         chain_build_time = time_since(chain_build_start)
 
-        logger.info("Querying LLM...")
-        query_build_start = cur_timestamp()
-        llm_query = LLMQuery(
-            stack,
-            pipeline,
-            data.get('client'),
-            get_api_llm_config(),
+        logger.info("Classifying Offensiveness...")
+        is_malicious_start = cur_timestamp()
+        malicious_classifier = MaliciousClassifier(
+            query_value,
+            chains['malicious'],
             logger
         )
-        query_build_time = time_since(query_build_start)
+        classification, reason, classification_data = malicious_classifier.question_has_malicious_intent()
+        malicious_query_classification_time = time_since(is_malicious_start)
+        response['malicious_query_classification'] = classification
+        response['malicious_query_classification_reason'] = reason
+        response['malicious_query_classification_response'] = classification_data
 
-        llm_query_start = cur_timestamp()
-        response = llm_query.query(
-            query_value,
-            chains['chain-context-only'],
-        )
-        llm_query_time = time_since(llm_query_start)
-
-        # We now need to verify that the response actually answers the question.
-        # We do this by re-prompting the LLM 
-        logger.info("Determining if response answered question...")
-        response_value = response['response']
-        reason_query_start = cur_timestamp()
-        verifier = ResponseVerifier(
-            query_value,
-            response_value,
-            chains['chain-verify-response'],
-            logger
-        )
-        is_answer, reason, answer_data = verifier.response_answers_question()
-        reason_query_time = time_since(reason_query_start)
-
-        if not is_answer:
-            logger.info("Response did NOT answer question...")
-            response['response'] = llm_query.FAIL_RESPONSE_MESSAGE
+        if classification != 'Safe':
+            logger.info("Classification: Not Safe...")
+            response['response'] = fail_response()
             response['is_answer'] = False
-            response['not_answer_reason'] = reason
+            if reason in classification_data:
+                response['malicious_query_classification_reason'] = classification_data['reason']
+            query_build_time = 0
+            llm_query_time = 0
+            reason_query_time = 0
+            postprocess_time = 0
         else:
-            logger.info("Response did answer question...")
-            response['is_answer'] = True
-            response['not_answer_reason'] = None
-        response['answer_data'] = answer_data
+            logger.info("Classification: Safe...")
+            logger.info("Querying LLM...")
+            query_build_start = cur_timestamp()
+            llm_query = LLMQuery(
+                response['id'],
+                stack,
+                pipeline,
+                data.get('client'),
+                get_api_llm_config(),
+                logger
+            )
+            query_build_time = time_since(query_build_start)
+
+            llm_query_start = cur_timestamp()
+            llm_response = llm_query.query(
+                query_value,
+                chains['chain-context-only'],
+            )
+            response.update(llm_response)
+            llm_query_time = time_since(llm_query_start)
+
+            # Verify if the response addresses the query.
+            logger.info("Determining if response answers question...")
+            response_value = response['response']
+            reason_query_start = cur_timestamp()
+            verifier = ResponseVerifier(
+                query_value,
+                response_value,
+                chains['chain-verify-response'],
+                logger
+            )
+            is_answer, reason, answer_data = verifier.response_answers_question()
+            reason_query_time = time_since(reason_query_start)
+
+            if not is_answer:
+                logger.info("Response did NOT addresses query...")
+                response['response'] = llm_query.FAIL_RESPONSE_MESSAGE
+                response['is_answer'] = False
+                response['not_answer_reason'] = reason
+            else:
+                logger.info("Response did addresses query...")
+                response['is_answer'] = True
+                response['not_answer_reason'] = None
+            response['answer_data'] = answer_data
 
     postprocess_start_time = cur_timestamp()
+
     # Strip nonsense like "Based on the provided context,"
     obtuse_prefixes = [
         'Based on the provided context,'
     ]
     for prefix in obtuse_prefixes:
         response['response'] = response['response'].replace(prefix, '').strip()
+
     postprocess_time = time_since(postprocess_start_time)
 
     response['time'] = {}
@@ -157,6 +190,8 @@ def libpages_query():
     response['time']['gpu_lock_wait_time'] = gpu_lock_wait_time
     response['time']['rag_stack_build_time'] = rag_stack_build_time
     response['time']['query_build_time'] = query_build_time
+    response['time']['malicious_query_classification_time'] = malicious_query_classification_time
+
     response['time']['inference_time'] = llm_query_time
     response['time']['reason_query_time'] = reason_query_time
     response['time']['postprocess_time'] = postprocess_time
