@@ -26,7 +26,7 @@ class WebPageCollector:
         CACHE_PATH (str): The path to the cache directory.
         IGNORE_PAGE_STRINGS (list): The strings to ignore in the page.
         REQUEST_HEADERS (dict): The headers to use for requests.
-        URL_LIST_FILE_PATH (str): The path to the list of URLs to collect.
+        URL_LIST_FILE_PATHS (str): The path to the list of URLs to collect.
         config (dict): The configuration for the collector.
         log (Logger): The logger for the collector.
         page_queue (list): The queue of pages to collect.
@@ -43,7 +43,7 @@ class WebPageCollector:
             + 'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 '
             + 'Safari/537.3'
     }
-    URL_LIST_FILE_PATH = 'collectors/libpages/urls.txt'
+    URL_LIST_FILE_PATHS = 'collectors/libpages/urls.txt'
 
     def __init__(self, config: dict, log: Logger) -> None:
         self.config = config
@@ -52,9 +52,10 @@ class WebPageCollector:
         self.page_queue_index = 0
         self.cur_url = ''
         self.cur_content = ''
-        if self.URL_LIST_FILE_PATH:
+        if self.URL_LIST_FILE_PATHS:
             self._validate_data_paths()
-            self._queue_urls()
+            for url_file_path in self.URL_LIST_FILE_PATHS:
+                self._queue_urls(url_file_path)
 
     def __iter__(self) -> None:
         return self
@@ -80,10 +81,22 @@ class WebPageCollector:
         if not os.path.exists(self.CACHE_PATH):
             os.makedirs(self.CACHE_PATH)
 
-    def _queue_urls(self) -> None:
+    def _queue_urls(self, url_file_path) -> None:
         """Queues the URLs to collect."""
-        url_file = open_file_read(self.URL_LIST_FILE_PATH)
-        self.page_queue = url_file.readlines()
+        url_file = open_file_read(url_file_path)
+        if not url_file:
+            self.log.error("Failed to open file: %s", url_file_path)
+            return
+        # Iterate over the lines in the file and remove any that are empty or not a properly formatted URL
+        validated_urls = []
+        for line in url_file.readlines():
+            line = line.strip()
+            if not line:
+                continue
+            if not line.startswith('http'):
+                continue
+            validated_urls.append(line)
+        self.page_queue.extend(validated_urls)
 
     def len(self) -> int:
         """Retrieves the length of the page queue.

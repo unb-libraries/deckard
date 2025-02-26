@@ -13,7 +13,7 @@ class LibPagesCollector(WebPageCollector):
     Attributes:
         CACHE_PATH (str): The path to the cache directory.
         IGNORE_PAGE_STRINGS (list): The strings to ignore in the page.
-        URL_LIST_FILE_PATH (str): The path to the list of URLs to collect.
+        URL_LIST_FILE_PATHS (str): The path to the list of URLs to collect.
 
     .. data:: OUTPUT_PATH
         The path to write the chunks to.
@@ -27,7 +27,12 @@ class LibPagesCollector(WebPageCollector):
     IGNORE_PAGE_STRINGS = [
         '404 Page Not Found'
     ]
-    URL_LIST_FILE_PATH = 'deckard/collectors/data/lib_urls.txt'
+
+    URL_LIST_FILE_PATHS =[
+        'deckard/collectors/data/lib_pages.txt',
+        'deckard/collectors/data/lib_news.txt',
+        'deckard/collectors/data/lib_additional.txt',
+    ]
 
     @staticmethod
     def name() -> str:
