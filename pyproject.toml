@@ -35,7 +35,6 @@ plain-text-markdown-extention = {git = "git@github.com:kostyachum/python-markdow
 [tool.poetry.scripts]
 "api:start" = "deckard.interfaces.api:start"
 "build:rag" = "deckard.interfaces.ragbuild:start"
-"evaluate" = "deckard.interfaces.ragevaluate:start"
 "query:llm" = "deckard.interfaces.llmdirectquery:query"
 "query:rag" = "deckard.interfaces.rag:rag_query"
 "search:embeddings" = "deckard.interfaces.embeddingsearch:search"
