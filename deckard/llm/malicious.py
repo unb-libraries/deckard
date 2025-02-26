@@ -32,7 +32,7 @@ class MaliciousClassifier:
             }
         )
         self.response = chain_response
-        self.logger.info(f"Malicious Classification Response: {self.response}")
+
         try:
             json_response = extract_first_json_block(self.response, "Malicious Reponse", self.logger)
             if json_response is None:

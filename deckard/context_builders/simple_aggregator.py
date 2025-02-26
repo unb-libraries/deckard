@@ -40,7 +40,6 @@ class SimpleContextAggregator:
 
             try:
                 sparse_item = next(sparse_iter)
-                print(sparse_item['document'][0])
                 results.append(sparse_item['document'][0])
             except StopIteration:
                 break

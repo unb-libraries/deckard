@@ -37,7 +37,6 @@ class ResponseVerifier:
             }
         )
         self.response = chain_response
-        self.logger.info(f"Verification Response: {self.response}")
         try:
             json_response = extract_first_json_block(self.response, "Verification Reponse", self.logger)
             if json_response is None:
