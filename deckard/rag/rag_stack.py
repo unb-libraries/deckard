@@ -50,7 +50,7 @@ class RagStack:
         self.query_value = ''
         self.response = ''
         self.response_fail = False
-        self.response_metadata = []
+        self.response_metadata = {}
         self.llm_config = {}
 
 
@@ -64,8 +64,8 @@ class RagStack:
 
     def add_config_response_metadata(self) -> None:
         """Adds the RAG configuration to the response metadata."""
-        self.response_metadata.append({'configuration': self.config})
-        self.response_metadata.append({'api_llm': self.llm_config})
+        self.response_metadata.update({'configuration': self.config})
+        self.response_metadata.update({'api_llm': self.llm_config})
 
     def query(
         self,
@@ -115,10 +115,10 @@ class RagStack:
             self.context_size
         )
 
-        self.response_metadata.append({'embedding_query': embedding_query})
-        self.response_metadata.append({'vector_results': reranked_results.to_dict()})
-        self.response_metadata.append({'sparse_results': sparse_results})
-        self.response_metadata.append(context_metadata)
+        self.response_metadata.update({'embedding_query': embedding_query})
+        self.response_metadata.update({'vector_results': reranked_results.to_dict()})
+        self.response_metadata.update({'sparse_results': sparse_results})
+        self.response_metadata.update(context_metadata)
         self.add_config_response_metadata()
 
         if self.context == '':
@@ -159,7 +159,7 @@ class RagStack:
         self.query_value = ''
         self.response = ''
         self.response_fail = False
-        self.response_metadata = []
+        self.response_metadata = {}
         self.llm_config = {}
 
     def query_chain(self) -> None:

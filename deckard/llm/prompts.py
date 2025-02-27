@@ -24,7 +24,7 @@ def get_context_only_prompt() -> str:
     Returns:
         str: The prompt.
     """
-    return """<|begin_of_text|><|start_header_id|>system<|end_header_id|>
+    return """<|start_header_id|>system<|end_header_id|>
 You are a helpful AI assistant for answering a user question based on provided context only. Answer concisely without unnecessary prefatory statements. Use only the provided context to answer the questions and not any prior knowledge. If the answer is not fully found in the context, say only "%s" and no more.<|eot_id|>
 <|start_header_id|>user<|end_header_id|>
 Answer concisely without unnecessary prefatory statements. If the answer is not available in the context, just say "%s".

@@ -35,7 +35,7 @@ def extract_first_json_block(content, data_type, logger):
         dict: The extracted JSON. None if not found.
     """
     try:
-        json_pattern = r'\{.*?\}'
+        json_pattern = r'\{(?:[^{}]|(?:\{(?:[^{}]|(?:\{[^{}]*\}))*\}))*\}'
         matches = re.findall(json_pattern, content, re.DOTALL)
         
         if not matches:
@@ -56,3 +56,19 @@ def extract_first_json_block(content, data_type, logger):
     except Exception as e:
         logger.error(f"Error: {e}")
         return None
+
+def list_of_dicts_to_dict(data: list) -> dict:
+    """Converts a list of dictionaries to a dictionary.
+
+    Args:
+        data (list): The list of dictionaries.
+
+    Returns:
+        dict: The dictionary.
+    """
+    final_dict = {}
+    # iterate over the list of dictionaries
+    # nest each into a final dictionary with the key as the list index and the value as the dictionary
+    for index, dictionary in enumerate(data):
+        final_dict[index] = dictionary
+    return final_dict

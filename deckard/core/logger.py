@@ -15,3 +15,16 @@ def get_logger() -> Logger:
     )
     logger = logging.getLogger('deckard')
     return logger
+
+def list_to_dict(l: list) -> dict:
+    """Converts a list to a dictionary.
+
+    This only exists because newrelic doesn't support lists in logs.
+
+    Args:
+        l (list): The list to convert.
+
+    Returns:
+        dict: The dictionary.
+    """
+    return {k: v for k, v in l}

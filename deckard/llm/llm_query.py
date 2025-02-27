@@ -29,7 +29,7 @@ class LLMQuery:
         query_value (str): The query value.
         response (str): The response.
         response_fail (bool): The response fail flag.
-        response_metadata (list): The response metadata.
+        response_metadata (dict): The response metadata.
         stack (RagStack): The RAG stack to use.
     """
     FAIL_RESPONSE_MESSAGE = fail_response()
@@ -53,7 +53,7 @@ class LLMQuery:
         self.query_value = ''
         self.response = ''
         self.response_fail = False
-        self.response_metadata = []
+        self.response_metadata = {}
 
     def query(
         self,
@@ -72,7 +72,8 @@ class LLMQuery:
         self.query_value = query
         self.log.info("New Query: %s [%s]: %s", query, self.pipeline_id, short_uuid(self.query_id))
         stack_response = self.stack.query(query, chain, self.llm_config)
-        self.response_metadata.append(self.stack.get_response_metadata())
+
+        self.response_metadata.update(self.stack.get_response_metadata())
 
         if self.stack.get_response_fail():
             if self.stack.get_response() == '':

@@ -1,6 +1,6 @@
 """Provides standard responses for the LLM."""
 def fail_response() -> str:
-    """Returns the standard LLM fail response."""
+    """Returns a standard LLM fail response."""
     return "Sorry, I could not find relevant information to address this question."
 
 def error_response() -> str:

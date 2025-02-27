@@ -7,12 +7,12 @@ from flask import Flask, Response, g, request
 from os import makedirs
 from waitress import serve as waitress_serve
 
-from deckard.core import get_logger, json_dumper, load_class
+from deckard.core import get_logger, json_dumper, load_class, list_of_dicts_to_dict
 from deckard.core.builders import build_llm_chains, build_rag_stacks
 from deckard.core.config import get_api_host, get_api_llm_config, get_api_port, get_data_dir, get_gpu_lockfile, get_rag_pipeline
 from deckard.core.time import cur_timestamp, time_since
 from deckard.core.utils import report_memory_use, gen_uuid
-from deckard.llm import LLM, LLMQuery, ResponseVerifier, MaliciousClassifier, fail_response
+from deckard.llm import LLM, LLMQuery, ResponseVerifier, MaliciousClassifier, CompoundClassifier, CompoundResponseSummarizer, fail_response
 from deckard.response_processors import Llama3ResponseProcessor
 
 DECKARD_CMD_STRING = 'api:start'
@@ -83,81 +83,143 @@ def libpages_query():
         'pipeline': pipeline
     }
 
-    gpu_lock_wait_time = acquire_gpu_lock(logger)
+    # Inits
+    query_build_time = 0
+    malicious_query_classification_time = 0
+    llm_query_time = 0
+    reason_query_time = 0
 
-    logger.info("Building Query Stacks...")
-    rag_stack_build_start = cur_timestamp()
-    stacks = build_rag_stacks(logger)
-    stack = stacks[pipeline]
-    rag_stack_build_time = time_since(rag_stack_build_start)
+    logger.info("Waiting for GPU lock...")
+    gpu_request_lock_start = cur_timestamp()
+    with gpu_lock:
+        gpu_lock_wait_time = time_since(gpu_request_lock_start)
+        logger.info("GPU lock acquired after %s seconds.", gpu_lock_wait_time)
 
-    llm_model_load_start = cur_timestamp()
-    llm = LLM(logger, get_api_llm_config()).get()
-    llm_model_load_time = time_since(llm_model_load_start)
+        logger.info("Building Query Stacks...")
+        rag_stack_build_start = cur_timestamp()
+        stacks = build_rag_stacks(logger)
+        stack = stacks[pipeline]
+        rag_stack_build_time = time_since(rag_stack_build_start)
 
-    logger.info("Building LLM Chains...")
-    chain_build_start = cur_timestamp()
-    chains = build_llm_chains(llm)
-    chain_build_time = time_since(chain_build_start)
+        logger.info("Loading LLM Model...")
+        llm_model_load_start = cur_timestamp()
+        llm = LLM(logger, get_api_llm_config()).get()
+        llm_model_load_time = time_since(llm_model_load_start)
 
-    # Malicious Classification
-    logger.info("Classifying Offensiveness...")
-    is_malicious_start = cur_timestamp()
-    malicious_classifier = MaliciousClassifier(query_value, chains['malicious'], logger)
-    classification, reason, classification_data = malicious_classifier.question_has_malicious_intent()
-    malicious_query_classification_time = time_since(is_malicious_start)
-    response.update({
-        'malicious_query_classification': classification,
-        'malicious_query_classification_reason': reason,
-        'malicious_query_classification_response': classification_data
-    })
+        logger.info("Building Query Chains...")
+        chain_build_start = cur_timestamp()
+        chains = build_llm_chains(llm)
+        chain_build_time = time_since(chain_build_start)
 
-    if classification != 'Safe':
-        logger.info("Classification: Not Safe...")
+        llm_inferences = []
+        answer_data = {}    
+        is_answer = False
+        has_valid_answers = False
+
+        # Malicious Classification
+        logger.info("Classifying Offensiveness...")
+        is_malicious_start = cur_timestamp()
+        malicious_classifier = MaliciousClassifier(query_value, chains['malicious'], logger)
+        classification, reason, classification_data = malicious_classifier.question_has_malicious_intent()
+        malicious_query_classification_time = time_since(is_malicious_start)
         response.update({
-            'response': fail_response(),
-            'is_answer': False,
-            'not_answer_reason': classification_data.get('reason')
+            'malicious_query_classification': classification,
+            'malicious_query_classification_reason': reason,
+            'malicious_query_classification_response': classification_data
         })
-        times = {
-            'model_load_time': llm_model_load_time,
-            'chain_build_time': chain_build_time,
-            'gpu_lock_wait_time': gpu_lock_wait_time,
-            'rag_stack_build_time': rag_stack_build_time,
-            'query_build_time': 0,
-            'malicious_query_classification_time': malicious_query_classification_time,
-            'inference_time': 0,
-            'reason_query_time': 0,
-            'postprocess_time': 0
-        }
-    else:
-        logger.info("Classification: Safe...")
 
-        # Build Query
-        logger.info("Querying LLM...")
-        query_build_start = cur_timestamp()
-        llm_query = LLMQuery(response['id'], stack, pipeline, data.get('client'), get_api_llm_config(), logger)
-        query_build_time = time_since(query_build_start)
+        if classification != 'Safe':
+            logger.info("Classification: Not Safe...")
+            response.update({
+                'response': fail_response(),
+                'not_answer_reason': classification_data.get('reason')
+            })
+            times = {
+                'model_load_time': llm_model_load_time,
+                'chain_build_time': chain_build_time,
+                'gpu_lock_wait_time': gpu_lock_wait_time,
+                'rag_stack_build_time': rag_stack_build_time,
+                'query_build_time': 0,
+                'malicious_query_classification_time': malicious_query_classification_time,
+                'inference_time': 0,
+                'reason_query_time': 0,
+                'postprocess_time': 0
+            }
+        else:
+            logger.info("Classification: Safe...")
 
-        # Query LLM
-        llm_query_start = cur_timestamp()
-        llm_response = llm_query.query(query_value, chains['chain-context-only'])
-        response.update(llm_response)
-        llm_query_time = time_since(llm_query_start)
+            # Build Query
+            logger.info("Building LLM Object...")
+            query_build_start = cur_timestamp()
+            llm_query = LLMQuery(response['id'], stack, pipeline, data.get('client'), get_api_llm_config(), logger)
+            query_build_time = time_since(query_build_start)
 
-        # Response Validity
-        logger.info("Determining if response answers question...")
-        response_value = response['response']
-        reason_query_start = cur_timestamp()
-        verifier = ResponseVerifier(query_value, response_value, chains['chain-verify-response'], logger)
-        is_answer, reason, answer_data = verifier.response_answers_question()
-        reason_query_time = time_since(reason_query_start)
+            # Compound Extraction MOVE BELOW MALICIOUS
+            logger.info("Compound Classification...")
+            compound_classifier = CompoundClassifier(query_value, chains['compound'], logger)
+            classified_compounds, classifier_response, reason = compound_classifier.explode_query()
+            if not classified_compounds or 'queries' not in classified_compounds or not classified_compounds['queries']:
+                logger.info("Compound Classification Failed...")
+                response.update({
+                    'compound_query_classification_response': classifier_response,
+                    'compound_query_classification_success': False,
+                    'compound_query_classification_reason': reason
+                })
+                queries_to_infer = {
+                    '1': query_value
+                }
+            else:
+                logger.info("Compound Classification Succeeded...")
+                response.update({
+                    'compound_query_classification_response': classifier_response,
+                    'compound_query_classification': classified_compounds,
+                    'compound_query_classification_success': True
+                })
+                queries_to_infer = classified_compounds['queries']
+
+            response.update({
+                'queries_to_infer': queries_to_infer
+            })
+
+            for query_value in queries_to_infer.values():
+                constructed_query = construct_given_that_query(llm_inferences, query_value)
+
+                # Query LLM
+                logger.info("Querying LLM...")
+                llm_query_start = cur_timestamp()
+                llm_response = llm_query.query(constructed_query, chains['chain-context-only'])
+                response.update(llm_response)
+                llm_query_time = time_since(llm_query_start)
+
+                # Response Validity
+                logger.info("Determining if response answers question...")
+                response_value = response['response']
+                reason_query_start = cur_timestamp()
+                verifier = ResponseVerifier(query_value, response_value, chains['chain-verify-response'], logger)
+                is_answer, reason, answer_data = verifier.response_answers_question()
+                reason_query_time = time_since(reason_query_start)
+                if is_answer:
+                    has_valid_answers = True
+                llm_inferences.append(
+                    {
+                        'query': query_value,
+                        'constructed_query': constructed_query,
+                        'response': response_value,
+                        'is_answer': is_answer,
+                        'not_answer_reason': None if is_answer else reason,
+                        'answer_data': answer_data
+                    }
+                )
+
+        summarizer_start = cur_timestamp()
+        response_summarizer = CompoundResponseSummarizer(chains['summarizer'], logger)
+        final_response = response_summarizer.summarize(llm_inferences)
+        summarizer_query_time = time_since(summarizer_start)
 
         response.update({
-            'response': llm_query.FAIL_RESPONSE_MESSAGE if not is_answer else response_value,
-            'is_answer': is_answer,
-            'not_answer_reason': None if is_answer else reason,
-            'answer_data': answer_data
+            'response': final_response,
+            'is_answer': has_valid_answers,
+            'inference_results': list_of_dicts_to_dict(llm_inferences)
         })
 
         times = {
@@ -168,7 +230,8 @@ def libpages_query():
             'query_build_time': query_build_time,
             'malicious_query_classification_time': malicious_query_classification_time,
             'inference_time': llm_query_time,
-            'reason_query_time': reason_query_time
+            'reason_query_time': reason_query_time,
+            'summary_time': summarizer_query_time
         }
 
     response = calculate_response_times(response, g.start, times)
@@ -275,10 +338,29 @@ def handle_error(response, logger):
         return Response(json_dumper(response, pretty=False), status=500, mimetype='application/json')
     return None
 
-def acquire_gpu_lock(logger):
-    logger.info("Waiting for GPU lock...")
-    gpu_request_lock_start = cur_timestamp()
-    with gpu_lock:
-        gpu_lock_wait_time = time_since(gpu_request_lock_start)
-        logger.info("GPU lock acquired after %s seconds.", gpu_lock_wait_time)
-        return gpu_lock_wait_time
+def construct_given_that_query(history: list, new_query: str) -> str:
+    """
+    Constructs a contextual query using previous interactions.
+    
+    Args:
+        history (list): A list of dictionaries with keys 'query', 'response', and 'is_answer'.
+        new_query (str): The new query to construct with context.
+    
+    Returns:
+        str: A constructed query using "Given that" statements.
+    """
+    
+    if not history:
+        return new_query  # No prior context, return the query as is
+    
+    given_statements = [
+        f"Given that {entry['response']}" 
+        for entry in history if entry.get('is_answer', True)
+    ]
+    
+    if not given_statements:
+        return new_query  # No valid prior context, return the new query as is
+    
+    context_intro = " and ".join(given_statements)
+    
+    return f"{context_intro}, {new_query}"  # Form the final structured query
