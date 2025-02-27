@@ -27,11 +27,13 @@ def before_request():
     """Set the start time for the request."""
     g.start = cur_timestamp()
 
+
 # Cheery default.
 @app.route("/")
 def hello():
     """Default endpoint."""
     return "Endpoint Disabled."
+
 
 @app.route('/health', methods=['GET'])
 def health_check():
@@ -41,6 +43,7 @@ def health_check():
         "message": "Service is running"
     }
     return Response(json_dumper(response, pretty=False), status=200, mimetype='application/json')
+
 
 @app.route("/query/raw", methods=['POST'])
 def rawquery():
@@ -69,6 +72,7 @@ def rawquery():
         return {
             "response": chain_reponse['text']
         }
+
 
 # RAG query endpoint.
 @app.route("/query/v1", methods=['POST'])
@@ -114,10 +118,9 @@ def libpages_query():
         llm_inferences = []
         answer_data = {}    
         is_answer = False
-        has_valid_answers = False
 
         # Malicious Classification
-        logger.info("Classifying Offensiveness...")
+        logger.info("Classifying Maliciousness...")
         is_malicious_start = cur_timestamp()
         malicious_classifier = MaliciousClassifier(query_value, chains['malicious'], logger)
         classification, reason, classification_data = malicious_classifier.question_has_malicious_intent()
@@ -154,7 +157,7 @@ def libpages_query():
             llm_query = LLMQuery(response['id'], stack, pipeline, data.get('client'), get_api_llm_config(), logger)
             query_build_time = time_since(query_build_start)
 
-            # Compound Extraction MOVE BELOW MALICIOUS
+            # Compound Extraction
             logger.info("Compound Classification...")
             compound_classifier = CompoundClassifier(query_value, chains['compound'], logger)
             classified_compounds, classifier_response, reason = compound_classifier.explode_query()
@@ -195,11 +198,9 @@ def libpages_query():
                 logger.info("Determining if response answers question...")
                 response_value = response['response']
                 reason_query_start = cur_timestamp()
-                verifier = ResponseVerifier(query_value, response_value, chains['chain-verify-response'], logger)
+                verifier = ResponseVerifier(constructed_query, response_value, chains['chain-verify-response'], logger)
                 is_answer, reason, answer_data = verifier.response_answers_question()
                 reason_query_time = time_since(reason_query_start)
-                if is_answer:
-                    has_valid_answers = True
                 llm_inferences.append(
                     {
                         'query': query_value,
@@ -213,10 +214,11 @@ def libpages_query():
 
         summarizer_start = cur_timestamp()
         response_summarizer = CompoundResponseSummarizer(chains['summarizer'], logger)
-        final_response = response_summarizer.summarize(llm_inferences)
+        final_response, response_was_summarized, has_valid_answers = response_summarizer.summarize(llm_inferences)
         summarizer_query_time = time_since(summarizer_start)
 
         response.update({
+            'query': data.get('query'),
             'response': final_response,
             'is_answer': has_valid_answers,
             'inference_results': list_of_dicts_to_dict(llm_inferences)
@@ -231,7 +233,8 @@ def libpages_query():
             'malicious_query_classification_time': malicious_query_classification_time,
             'inference_time': llm_query_time,
             'reason_query_time': reason_query_time,
-            'summary_time': summarizer_query_time
+            'summary_time': summarizer_query_time,
+            'response_was_summarized': response_was_summarized
         }
 
     response = calculate_response_times(response, g.start, times)
@@ -242,6 +245,7 @@ def libpages_query():
 
     write_response_data(response)
     return Response(json_dumper(response, pretty=False), status=200, mimetype='application/json')
+
 
 @app.route("/search", methods=['POST'])
 def db_search_query():

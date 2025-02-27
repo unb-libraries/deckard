@@ -1,6 +1,7 @@
 from langchain.chains import LLMChain
 from logging import Logger
 
+from deckard.core import json_dumper
 from deckard.llm import fail_response
 
 class CompoundResponseSummarizer:
@@ -17,12 +18,15 @@ class CompoundResponseSummarizer:
     def summarize(self, data) -> tuple:
         """ Summarizes multiple responses into a single paragraph.
 
-        Returns:
+        Args:
+            data (list[dict]): A list of dictionaries with keys 'query', 'response', and 'is_answer'.
 
-            str: The response.
+        Returns:
+            tuple (str, bool, bool): The response/summarization was run/at least one of the queries was answered.
         """
         if not data:
-            return fail_response()
+            self.logger.info("No data provided for summarization")
+            return fail_response(), False, False
         
         has_response = False
         for item in data:
@@ -31,12 +35,13 @@ class CompoundResponseSummarizer:
                 break
 
         if not has_response:
-            return fail_response()
+            self.logger.info("No responses answered their queries")
+            return fail_response(), False, False
 
-        # If only one response, return it
+        # If only one response, return it. No need to summarize.
         if len(data) == 1:
-            return data[0]['response']
-
+            self.logger.info("Only one response provided, not summarizing")
+            return data[0]['response'], False, True
 
         chain_data = []
         for item in data:
@@ -52,14 +57,15 @@ class CompoundResponseSummarizer:
                 }
             );
 
+        self.logger.info("Summarizing responses")
         chain_response = self.chain.invoke(
             {
-                "json_data": chain_data
+                "json_data": json_dumper(chain_data)
             }
         )
 
         self.response = chain_response
-        return chain_response
+        return chain_response, True, True
 
 def summarize_response_prompt() -> str:
     """Returns the prompt that instructs the LLM to summarize a single response from multiple queries.
