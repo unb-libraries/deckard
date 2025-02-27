@@ -7,9 +7,9 @@ from flask import Flask, Response, g, request
 from os import makedirs
 from waitress import serve as waitress_serve
 
-from deckard.core import get_logger, json_dumper
+from deckard.core import get_logger, json_dumper, load_class
 from deckard.core.builders import build_llm_chains, build_rag_stacks
-from deckard.core.config import get_api_host, get_api_llm_config, get_api_port, get_data_dir, get_gpu_lockfile
+from deckard.core.config import get_api_host, get_api_llm_config, get_api_port, get_data_dir, get_gpu_lockfile, get_rag_pipeline
 from deckard.core.time import cur_timestamp, time_since
 from deckard.core.utils import report_memory_use, gen_uuid
 from deckard.llm import LLM, LLMQuery, ResponseVerifier, MaliciousClassifier, fail_response
@@ -172,7 +172,7 @@ def libpages_query():
         }
 
     response = calculate_response_times(response, g.start, times)
-    response = process_response(response, logger)
+    response = process_response(response, pipeline, logger)
     error_response = handle_error(response, logger)
     if error_response:
         return error_response
@@ -258,10 +258,11 @@ def calculate_response_times(response, start_time, times):
     response['time']['total'] = time_since(start_time)
     return response
 
-def process_response(response, logger):
+def process_response(response, pipeline, logger):
     postprocess_start_time = cur_timestamp()
     if response['is_answer']:
-        response_processor = Llama3ResponseProcessor(response['response'], logger)
+        config = get_rag_pipeline(pipeline)['rag']
+        response_processor = load_class(config['response_processor']['module_name'], config['response_processor']['class_name'], [response['response'], logger])
         response['response'] = response_processor.get_processed_response()
     response['time']['postprocess_time'] = time_since(postprocess_start_time)
     return response
