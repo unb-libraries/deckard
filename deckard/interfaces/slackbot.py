@@ -1,26 +1,20 @@
-"""Provides a Slackbot interface for Deckard."""
-import json
-import os
+"""Provides a simple one-shot Slackbot interface for Deckard."""
+import requests
 import shlex
 
 from slack_bolt import App
 from slack_bolt.adapter.socket_mode import SocketModeHandler
 
-from deckard.core import get_logger, get_rag_pipeline, available_rag_pipelines_message
+from deckard.core import get_logger, get_rag_pipeline, available_rag_pipelines_message, get_slack_config
 from deckard.interfaces.api import api_server_up
 from deckard.llm.responses import error_response
-from deckard.interfaces.client import legacy_post_query_to_api
 
 DECKARD_CMD_STRING = 'slackbot:start'
 
-# This socketmode app can be translated to a listener endpoint for slack.
-# It listens for messages and responds to them.
-SLACK_BOT_TOKEN=os.environ['SLACK_BOT_TOKEN']
-SLACK_APP_TOKEN=os.environ['SLACK_APP_TOKEN']
-
+config = get_slack_config()
 log = get_logger()
 app = App(
-    token=SLACK_BOT_TOKEN,
+    token=config['slack_bot_token'],
     logger=log
 )
 
@@ -57,15 +51,31 @@ def slack_events(ack: callable, respond: callable, command: str) -> None:
         respond(error_response())
         return
 
-    r = legacy_post_query_to_api(
-        command_data[1],
-        '/query',
-        'slackbot',
-        log,
-        pipeline=command_data[0]
-    )
-    rj = json.loads(r.text)
-    respond(wrap_markdown_formatter(rj['response']))
+    try:
+        response = requests.post(
+            'https://aigateway.lib.unb.ca/deckard/api/v1',
+            json={
+                'query': command_data[1],
+                'client': 'deckard slackbot',
+                'pipeline': command_data[0]
+            },
+            headers={
+                'x-pub-key': config['api_pub_key'],
+                'x-api-key': config['api_priv_key']
+            }
+        )
+        response.raise_for_status()
+        rj = response.json()
+        # Get the 'response' key item from the response JSON
+        text_response = rj.get('response')
+        if text_response is None:
+            log.error("No response found in API response")
+            respond(error_response())
+            return
+        respond(text_response)
+    except requests.RequestException as e:
+        log.error("Request failed: %s", e)
+        respond(error_response())
 
 def wrap_markdown_formatter(text: str) -> str:
     """Wraps the text in markdown formatting.
@@ -80,7 +90,7 @@ def wrap_markdown_formatter(text: str) -> str:
 
 def start() -> None:
     """Starts the Slackbot."""
-    handler = SocketModeHandler(app, SLACK_APP_TOKEN)
+    handler = SocketModeHandler(app, config['slack_app_token'])
     handler.start()
 
 def get_user_usage_example() -> str:

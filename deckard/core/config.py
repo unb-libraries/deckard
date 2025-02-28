@@ -132,3 +132,11 @@ def get_client_timeout() -> int:
         int: The client timeout.
     """
     return int(get_config_as_dict()['client']['timeout'])
+
+def get_slack_config() -> dict:
+    """Gets the Slack configuration from the configuration file.
+
+    Returns:
+        dict: The Slack configuration.
+    """
+    return get_config_as_dict()['slackbot']
