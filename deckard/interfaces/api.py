@@ -66,7 +66,7 @@ def rawquery():
     query_lock_type = get_query_lock_type()
     logger.info(f"Waiting for {query_lock_type} lock...")
     query_lock_start = cur_timestamp()
-    with gpu_lock:
+    with get_query_lock():
         query_lock_wait_time = time_since(query_lock_start)
         logger.info(f"{query_lock_type} lock acquired after {query_lock_wait_time} seconds.")
 
@@ -321,10 +321,10 @@ def start() -> None:
     logger.info("Starting API server...")
 
     if gpu_exclusive:
-
         logger.info("Acquiring GPU lock...")
         gpu_lock.acquire()
         logger.info("GPU lock acquired.")
+        signal.signal(signal.SIGINT, release_gpu_lock_and_exit)
 
         logger.info("Building Query Stacks...")
         stacks = build_rag_stacks(logger)
@@ -334,8 +334,6 @@ def start() -> None:
 
         logger.info("Building Query Chains...")
         chains = build_llm_chains(llm)
-
-    signal.signal(signal.SIGINT, release_gpu_lock_and_exit)
 
     try:
         waitress_serve(app, host=get_api_host(), port=get_api_port())
