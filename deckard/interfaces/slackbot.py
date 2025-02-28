@@ -1,4 +1,5 @@
 """Provides a simple one-shot Slackbot interface for Deckard."""
+import json
 import requests
 import shlex
 
@@ -72,11 +73,21 @@ def slack_events(ack: callable, respond: callable, command: str) -> None:
             log.error("No response found in API response")
             respond(error_response())
             return
-        source_urls = rj.get('source_urls')
-        if source_urls:
-            final_urls = get_valid_urls(source_urls)
-            if final_urls:
-                text_response += f" Sources: [{", ".join(final_urls)}]"
+        sources = rj.get('source_urls')
+        if sources != None and sources != {}:
+            try:
+                if 'source_urls' in sources:
+                    source_urls = sources['source_urls']
+                    if source_urls == None or source_urls == []:
+                        log.error("No source URLs found in API response")
+                    else:
+                        valid_urls = get_valid_urls(source_urls)
+                        if valid_urls == None or valid_urls == []:
+                            log.error("No valid URLs found in API response")
+                        else:
+                            text_response += f" [Sources: {", ".join(valid_urls)}]"
+            except json.JSONDecodeError:
+                log.error("Failed to decode source URLs")
         respond(text_response)
     except requests.RequestException as e:
         log.error("Request failed: %s", e)
@@ -108,7 +119,7 @@ def get_user_usage_example() -> str:
         f"Usage: /query_llm <pipeline> <query>. {available_rag_pipelines_message()}"
     )
 
-def get_valid_urls(urls) -> list:
+def get_valid_urls(urls: list) -> list:
     """Gets the valid URLs from a list of URLs.
 
     Args:
