@@ -74,7 +74,19 @@ def slack_events(ack: callable, respond: callable, command: str) -> None:
             return
         source_urls = rj.get('source_urls')
         if source_urls:
-            text_response += f" Sources: [{", ".join(source_urls)}]"
+            final_urls = []
+            log.info("Ensuring URLs exist", source_urls)
+            for url in source_urls:
+                try:
+                    log.info("Checking URL: %s", url)
+                    response = requests.get(url, allow_redirects=True)
+                    final_urls.append(response.url)
+                except requests.HTTPError as e:
+                    log.error(f"HTTP error: {e}")
+                except requests.RequestException as e:
+                    log.error(f"Request error: {e}")
+            if final_urls:
+                text_response += f" Sources: [{", ".join(final_urls)}]"
         respond(text_response)
     except requests.RequestException as e:
         log.error("Request failed: %s", e)
