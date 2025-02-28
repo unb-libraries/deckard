@@ -74,17 +74,7 @@ def slack_events(ack: callable, respond: callable, command: str) -> None:
             return
         source_urls = rj.get('source_urls')
         if source_urls:
-            final_urls = []
-            log.info("Ensuring URLs exist", source_urls)
-            for url in source_urls:
-                try:
-                    log.info("Checking URL: %s", url)
-                    response = requests.get(url, allow_redirects=True)
-                    final_urls.append(response.url)
-                except requests.HTTPError as e:
-                    log.error(f"HTTP error: {e}")
-                except requests.RequestException as e:
-                    log.error(f"Request error: {e}")
+            final_urls = get_valid_urls(source_urls)
             if final_urls:
                 text_response += f" Sources: [{", ".join(final_urls)}]"
         respond(text_response)
@@ -117,3 +107,23 @@ def get_user_usage_example() -> str:
     return wrap_markdown_formatter(
         f"Usage: /query_llm <pipeline> <query>. {available_rag_pipelines_message()}"
     )
+
+def get_valid_urls(urls) -> list:
+    """Gets the valid URLs from a list of URLs.
+
+    Args:
+        urls (list): The list of URLs.
+
+    Returns:
+        list: The valid URLs.
+    """
+    valid_urls = []
+    for url in urls:
+        try:
+            response = requests.get(url, allow_redirects=True)
+            valid_urls.append(response.url)
+        except requests.HTTPError as e:
+            log.error(f"HTTP error: {e}")
+        except requests.RequestException as e:
+            log.error(f"Request error: {e}")
+    return valid_urls
