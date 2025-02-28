@@ -14,7 +14,7 @@ from deckard.core.builders import build_llm_chains, build_rag_stacks
 from deckard.core.config import get_api_host, get_api_llm_config, get_api_port, get_data_dir, get_gpu_lockfile, get_rag_pipeline
 from deckard.core.time import cur_timestamp, time_since
 from deckard.core.utils import report_memory_use, gen_uuid
-from deckard.llm import LLM, LLMQuery, ResponseVerifier, MaliciousClassifier, CompoundClassifier, CompoundResponseSummarizer, fail_response
+from deckard.llm import LLM, LLMQuery, ResponseVerifier, MaliciousClassifier, CompoundClassifier, CompoundResponseSummarizer, ResponseSourceExtractor, fail_response
 
 DECKARD_CMD_STRING = 'api:start'
 
@@ -231,7 +231,8 @@ def libpages_query():
                         'response': response_value,
                         'is_answer': is_answer,
                         'not_answer_reason': None if is_answer else reason,
-                        'answer_data': answer_data
+                        'answer_data': answer_data,
+                        'chunks_used': response['metadata']['contextbuilder']['chunks_used']
                     }
                 )
 
@@ -239,6 +240,17 @@ def libpages_query():
         response_summarizer = CompoundResponseSummarizer(chains['summarizer'], logger)
         final_response, response_was_summarized, has_valid_answers = response_summarizer.summarize(llm_inferences)
         summarizer_query_time = time_since(summarizer_start)
+
+        if has_valid_answers:
+            sources_start = cur_timestamp()
+            chunks_used = []
+            for inference in llm_inferences:
+                chunks_used.extend(inference['chunks_used'])
+            response_sources = ResponseSourceExtractor(chains['sources'], logger)
+            sources_found, sources_reason, source_urls = response_sources.get_sources(query_value, final_response, chunks_used)
+            response['sources_found'] = sources_found
+            response['sources_reason'] = sources_reason
+            response['source_urls'] = source_urls
 
         response.update({
             'query': data.get('query'),

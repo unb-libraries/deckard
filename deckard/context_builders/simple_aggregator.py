@@ -1,3 +1,4 @@
+import pandas as pd
 from typing import TypeVar
 
 T = TypeVar('T', str, dict)
@@ -10,7 +11,7 @@ class SimpleContextAggregator:
     """
 
     def __init__(self, log):
-        self.results = None
+        self.results = []
         self.log = log
 
     def build_context(self, dense_results, sparse_results, database, context_size):
@@ -25,36 +26,34 @@ class SimpleContextAggregator:
         Returns:
             T: The context and the metadata.
         """
-        results = []
+        # Rename dataframe columns to a common schema
+        dense_results = dense_results.rename(columns={'text': 'value'})
+        sparse_results = sparse_results.rename(columns={'document': 'value'})
 
-        dense_iter = iter(dense_results['text'].items())
-        sparse_iter = iter(sparse_results)
+        # Reset indices for interleaving
+        dense_results = dense_results.reset_index(drop=True)
+        sparse_results = sparse_results.reset_index(drop=True)
 
-        # Zip the items together ranked by score.
-        while True:
-            try:
-                dense_item = next(dense_iter)
-                results.append(dense_item[1])
-            except StopIteration:
-                break
+        # Concatenate and sort to interleave
+        combined_results = pd.concat([dense_results, sparse_results], keys=['dense_results', 'sparse_results']).sort_index(level=1)
 
-            try:
-                sparse_item = next(sparse_iter)
-                results.append(sparse_item['document'][0])
-            except StopIteration:
-                break
-
-        self.results = results
         metadata = {'contextbuilder' : {'chunks_used': [], 'context': '', 'context_length': 0}}
-
         context = ""
-        for result in results:
-            item = result
-            context += item + "\n"
-            metadata['contextbuilder']['chunks_used'].append(result)
+        for chunk in combined_results.iterrows():
+            row_text = chunk[1]['value']
+            context += row_text + "\n"
+            chunk_metadata = chunk[1]['metadata']
+            metadata['contextbuilder']['chunks_used'].append(
+                {
+                    'chunk': row_text,
+                    'metadata': chunk_metadata
+                }
+            )
             if len(context) >= context_size:
                 break
+
         final_context = context[:context_size]
         metadata['contextbuilder']['context'] = final_context
         metadata['contextbuilder']['context_length'] = len(final_context)
+
         return final_context, metadata

@@ -116,8 +116,8 @@ class RagStack:
         )
 
         self.response_metadata.update({'embedding_query': embedding_query})
-        self.response_metadata.update({'vector_results': reranked_results.to_dict()})
-        self.response_metadata.update({'sparse_results': sparse_results})
+        self.response_metadata.update({'vector_results': reranked_results.to_dict(orient='tight')})
+        self.response_metadata.update({'sparse_results': sparse_results.to_dict(orient='tight')})
         self.response_metadata.update(context_metadata)
         self.add_config_response_metadata()
 

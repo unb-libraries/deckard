@@ -3,7 +3,7 @@ from langchain_community.llms import LlamaCpp
 from langchain.prompts import PromptTemplate
 from langchain_core.runnables import RunnableSequence
 
-from deckard.llm import get_context_only_prompt, get_context_plus_prompt, response_addresses_query_prompt, malicious_classification_prompt, explode_query_prompt, summarize_response_prompt
+from deckard.llm import get_context_only_prompt, get_context_plus_prompt, response_addresses_query_prompt, malicious_classification_prompt, explode_query_prompt, summarize_response_prompt, get_sources_prompt
 
 from .config import get_rag_pipelines
 
@@ -60,6 +60,10 @@ def build_llm_chains(llm: LlamaCpp) -> list[RunnableSequence]:
     chains['summarizer'] = build_llm_chain(
         llm,
         summarize_response_prompt()
+    )
+    chains['sources'] = build_llm_chain(
+        llm,
+        get_sources_prompt()
     )
     return chains
 

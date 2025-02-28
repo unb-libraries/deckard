@@ -1,4 +1,5 @@
 import json
+import pandas as pd
 import sys
 import requests
 import re
@@ -121,11 +122,12 @@ class SolrClient:
         results = response.json().get("response", {}).get("docs", [])
 
         if not results:
-            return []
+            return pd.DataFrame()
 
-        # Convert metadata field from raw json to dict
+        # Unwrap and convert fields
         for doc in results:
             doc["metadata"] = json.loads(doc["metadata"][0])
+            doc["document"] = doc["document"][0]
 
         scores = np.array([doc["score"] for doc in results])
         normalized_scores = scores / np.max(scores)
@@ -133,7 +135,7 @@ class SolrClient:
         for i, doc in enumerate(results):
             doc["normalized_score"] = round(float(normalized_scores[i]), 4)
 
-        return results
+        return pd.DataFrame(results)
 
     def flush_index(self):
         """Deletes all indexed documents from Solr."""
