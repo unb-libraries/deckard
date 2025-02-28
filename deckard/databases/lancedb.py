@@ -97,28 +97,29 @@ class LanceDB:
         Returns:
             int: The highest embedding id inserted
         """
-        item_metadata, embeddings, embedding_id = self._build_document_data(
+        item_metadata, embeddings, embedding_id = self._build_database_values_for_document(
             document,
             embedding_id_start
         )
 
+        # Blend the metadata and embeddings into a single table
         textual_data = pa.Table.from_pydict(item_metadata)
         et = vec_to_table(embeddings)
-        item = textual_data.append_column("vector", et["vector"])
+        items = textual_data.append_column("vector", et["vector"])
 
         self.log.info("Adding document %s %s embeddings to LanceDB.", document['id'], len(embeddings))
         if create_table:
-            self._create_table(item)
+            self._create_table(items)
         else:
-            self.embeddings_table.add(item)
+            self.embeddings_table.add(items)
         return embedding_id
 
-    def _build_document_data(
+    def _build_database_values_for_document(
             self,
             document: dict,
             embedding_id_start: int
         ) -> T:
-        """Builds the data for a document to be added to the database.
+        """Builds the values to be inserted into the database for a document.
 
         Args:
             document (dict): The document's data to add to the database. Each
@@ -137,6 +138,7 @@ class LanceDB:
         chunk_ids = []
         texts = []
         embeddings = []
+        metadata = []
 
         for idx, embedding in enumerate(document['embeddings']):
             embedding_id += 1
@@ -145,13 +147,16 @@ class LanceDB:
             chunk_ids.append(idx)
             texts.append(document['raw_chunks'][idx])
             embeddings.append(embedding)
+            metadata.append(document['metadata'])
 
         item_metadata = {
             'id': ids,
             'text': texts,
             'doc_id': doc_ids,
-            'chunk_id': chunk_ids
+            'chunk_id': chunk_ids,
+            'metadata': metadata
         }
+
         return item_metadata, embeddings, embedding_id
 
     def query(
