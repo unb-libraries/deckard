@@ -66,12 +66,15 @@ def slack_events(ack: callable, respond: callable, command: str) -> None:
         )
         response.raise_for_status()
         rj = response.json()
-        # Get the 'response' key item from the response JSON
+
         text_response = rj.get('response')
         if text_response is None:
             log.error("No response found in API response")
             respond(error_response())
             return
+        source_urls = rj.get('source_urls')
+        if source_urls:
+            text_response += f" Sources: [{", ".join(source_urls)}]"
         respond(text_response)
     except requests.RequestException as e:
         log.error("Request failed: %s", e)
