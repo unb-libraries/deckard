@@ -10,13 +10,21 @@ def get_config_as_dict() -> dict:
     """
     return load_yaml("config.yml")
 
+def get_api_config() -> dict:
+    """Gets the API configuration from the configuration file.
+
+    Returns:
+        dict: The API configuration.
+    """
+    return get_config_as_dict()['api']
+
 def get_api_llm_config() -> dict:
     """Gets the LLM configuration from the configuration file.
 
     Returns:
         dict: The LLM configuration.
     """
-    return get_config_as_dict()['api']['llm']['model']
+    return get_api_config()['llm']['model']
 
 def get_http_user_agent() -> str:
     """Gets the HTTP user agent from the configuration file.
@@ -76,6 +84,14 @@ def get_gpu_lockfile() -> str:
     data_dir = get_data_dir()
     lockfile = get_config_as_dict()['api']['gpu_lock_file']
     return path_join(data_dir, lockfile)
+
+def get_api_gpu_exclusive_mode() -> bool:
+    """Gets the GPU exclusive mode from the configuration file.
+
+    Returns:
+        bool: The GPU exclusive mode.
+    """
+    return get_api_config()['gpu_exclusive_mode']
 
 def get_client_uri() -> str:
     """Gets the client URI from the configuration file.

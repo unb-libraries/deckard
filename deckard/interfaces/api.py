@@ -1,26 +1,34 @@
 import socket
+import signal
 import sys
 
-from logging import Logger
 from filelock import FileLock
 from flask import Flask, Response, g, request
+from logging import Logger
 from os import makedirs
+from threading import Lock
 from waitress import serve as waitress_serve
 
-from deckard.core import get_logger, json_dumper, load_class, list_of_dicts_to_dict
+from deckard.core import get_logger, json_dumper, load_class, list_of_dicts_to_dict, get_api_gpu_exclusive_mode
 from deckard.core.builders import build_llm_chains, build_rag_stacks
 from deckard.core.config import get_api_host, get_api_llm_config, get_api_port, get_data_dir, get_gpu_lockfile, get_rag_pipeline
 from deckard.core.time import cur_timestamp, time_since
 from deckard.core.utils import report_memory_use, gen_uuid
 from deckard.llm import LLM, LLMQuery, ResponseVerifier, MaliciousClassifier, CompoundClassifier, CompoundResponseSummarizer, fail_response
-from deckard.response_processors import Llama3ResponseProcessor
 
 DECKARD_CMD_STRING = 'api:start'
 
 app = Flask(__name__)
 
 gpu_lock = FileLock(get_gpu_lockfile())
+query_lock = Lock()
+
+gpu_exclusive = get_api_gpu_exclusive_mode()
 logger = get_logger()
+
+stacks = None
+llm = None
+chains = None
 
 @app.before_request
 def before_request():
@@ -48,20 +56,25 @@ def health_check():
 @app.route("/query/raw", methods=['POST'])
 def rawquery():
     """Direct LLM query. Not logged or for general use."""
+    global stacks, llm, chains
+
     data = request.json
     context = data.get('context')
     query = data.get('query')
     logger.info("Raw LLM Query Recieved with context %s and query %s...", context, query)
- 
-    logger.info("Waiting for GPU lock...")
-    gpu_request_lock_start = cur_timestamp()
+
+    query_lock_type = get_query_lock_type()
+    logger.info(f"Waiting for {query_lock_type} lock...")
+    query_lock_start = cur_timestamp()
     with gpu_lock:
-        gpu_lock_wait_time = time_since(gpu_request_lock_start)
-        logger.info("GPU lock acquired after %s seconds.", gpu_lock_wait_time)
-        llm = LLM(logger, get_api_llm_config()).get()
-        logger.info("Building LLM Chains...")
-        chains = build_llm_chains(llm)
-        chain = chains['chain-context-plus']
+        query_lock_wait_time = time_since(query_lock_start)
+        logger.info(f"{query_lock_type} lock acquired after {query_lock_wait_time} seconds.")
+
+        if not gpu_exclusive:
+            llm = LLM(logger, get_api_llm_config()).get()
+            logger.info("Building LLM Chains...")
+            chains = build_llm_chains(llm)
+            chain = chains['chain-context-plus']
 
         chain_reponse = chain.invoke(
             {
@@ -78,45 +91,54 @@ def rawquery():
 @app.route("/query/v1", methods=['POST'])
 def libpages_query():
     """RAG query endpoint."""
+    global stacks, llm, chains
+
     data = request.json
     query_value = data.get('query')
     pipeline = data.get('pipeline')
     response = {
         'id': gen_uuid(),
         'query': query_value,
-        'pipeline': pipeline
+        'pipeline': pipeline,
+        'exclusive_mode': gpu_exclusive
     }
 
     # Inits
-    query_build_time = 0
-    malicious_query_classification_time = 0
+    chain_build_time = 0
+    llm_model_load_time = 0
     llm_query_time = 0
+    malicious_query_classification_time = 0
+    query_build_time = 0
+    rag_stack_build_time = 0
     reason_query_time = 0
 
-    logger.info("Waiting for GPU lock...")
-    gpu_request_lock_start = cur_timestamp()
-    with gpu_lock:
-        gpu_lock_wait_time = time_since(gpu_request_lock_start)
-        logger.info("GPU lock acquired after %s seconds.", gpu_lock_wait_time)
+    query_lock_type = get_query_lock_type()
+    logger.info(f"Waiting for {query_lock_type} lock...")
+    query_lock_start = cur_timestamp()
 
-        logger.info("Building Query Stacks...")
-        rag_stack_build_start = cur_timestamp()
-        stacks = build_rag_stacks(logger)
+    with get_query_lock():
+        query_lock_wait_time = time_since(query_lock_start)
+        logger.info(f"{query_lock_type} lock acquired after {query_lock_wait_time} seconds.")
+
+        if not gpu_exclusive:
+            logger.info("Building Query Stacks...")
+            rag_stack_build_start = cur_timestamp()
+            stacks = build_rag_stacks(logger)
+            rag_stack_build_time = time_since(rag_stack_build_start)
+
+            logger.info("Loading LLM Model...")
+            llm_model_load_start = cur_timestamp()
+            llm = LLM(logger, get_api_llm_config()).get()
+            llm_model_load_time = time_since(llm_model_load_start)
+
+            logger.info("Building Query Chains...")
+            chain_build_start = cur_timestamp()
+            chains = build_llm_chains(llm)
+            chain_build_time = time_since(chain_build_start)
+
         stack = stacks[pipeline]
-        rag_stack_build_time = time_since(rag_stack_build_start)
-
-        logger.info("Loading LLM Model...")
-        llm_model_load_start = cur_timestamp()
-        llm = LLM(logger, get_api_llm_config()).get()
-        llm_model_load_time = time_since(llm_model_load_start)
-
-        logger.info("Building Query Chains...")
-        chain_build_start = cur_timestamp()
-        chains = build_llm_chains(llm)
-        chain_build_time = time_since(chain_build_start)
-
         llm_inferences = []
-        answer_data = {}    
+        answer_data = {}
         is_answer = False
 
         # Malicious Classification
@@ -140,7 +162,8 @@ def libpages_query():
             times = {
                 'model_load_time': llm_model_load_time,
                 'chain_build_time': chain_build_time,
-                'gpu_lock_wait_time': gpu_lock_wait_time,
+                'query_lock_type': query_lock_type,
+                'query_lock_wait_time': query_lock_wait_time,
                 'rag_stack_build_time': rag_stack_build_time,
                 'query_build_time': 0,
                 'malicious_query_classification_time': malicious_query_classification_time,
@@ -227,7 +250,8 @@ def libpages_query():
         times = {
             'model_load_time': llm_model_load_time,
             'chain_build_time': chain_build_time,
-            'gpu_lock_wait_time': gpu_lock_wait_time,
+            'query_lock_type': query_lock_type,
+            'query_lock_wait_time': query_lock_wait_time,
             'rag_stack_build_time': rag_stack_build_time,
             'query_build_time': query_build_time,
             'malicious_query_classification_time': malicious_query_classification_time,
@@ -250,22 +274,27 @@ def libpages_query():
 @app.route("/search", methods=['POST'])
 def db_search_query():
     """Search RAG embeddings. Not logged or for general use."""
+    global stacks, llm, chains
+
     data = request.json
     query_value = data.get('query')
     pipeline = data.get('pipeline')
 
     logger.info("Embedding Search Recieved: query='%s...", query_value)
 
-    logger.info("Waiting for GPU lock...")
-    gpu_request_lock_start = cur_timestamp()
-    with gpu_lock:
-        gpu_lock_wait_time = time_since(gpu_request_lock_start)
+    query_lock_type = get_query_lock_type()
+    logger.info(f"Waiting for {query_lock_type} lock...")
+    query_lock_start = cur_timestamp()
+    with get_query_lock():
+        query_lock_wait_time = time_since(query_lock_start)
+        logger.info(f"{query_lock_type} lock acquired after {query_lock_wait_time} seconds.")
 
-        logger.info("Building Query Stacks...")
-        rag_stack_build_start = cur_timestamp()
-        stacks = build_rag_stacks(logger)
-        stack = stacks[pipeline]
-        rag_stack_build_time = time_since(rag_stack_build_start)
+        if not gpu_exclusive:
+            logger.info("Building Query Stacks...")
+            rag_stack_build_start = cur_timestamp()
+            stacks = build_rag_stacks(logger)
+            stack = stacks[pipeline]
+            rag_stack_build_time = time_since(rag_stack_build_start)
 
         search_start = cur_timestamp()
         response = stack.search(query_value).to_dict()
@@ -277,7 +306,7 @@ def db_search_query():
         return Response(json_dumper(response, pretty=False), status=500, mimetype='application/json')    
 
     response['time'] = {}
-    response['time']['gpu_lock_wait_time'] = gpu_lock_wait_time
+    response['time']['query_lock_wait_time'] = query_lock_wait_time
     response['time']['rag_stack_build_time'] = rag_stack_build_time
     response['time']['search_time'] = search_time
 
@@ -287,9 +316,34 @@ def db_search_query():
 # API Start-up.
 def start() -> None:
     """Starts the API server."""
+    global stacks, llm, chains
     report_memory_use(logger)
     logger.info("Starting API server...")
-    waitress_serve(app, host=get_api_host(), port=get_api_port())
+
+    if gpu_exclusive:
+
+        logger.info("Acquiring GPU lock...")
+        gpu_lock.acquire()
+        logger.info("GPU lock acquired.")
+
+        logger.info("Building Query Stacks...")
+        stacks = build_rag_stacks(logger)
+
+        logger.info("Loading LLM Model...")
+        llm = LLM(logger, get_api_llm_config()).get()
+
+        logger.info("Building Query Chains...")
+        chains = build_llm_chains(llm)
+
+    signal.signal(signal.SIGINT, release_gpu_lock_and_exit)
+
+    try:
+        waitress_serve(app, host=get_api_host(), port=get_api_port())
+    finally:
+        if gpu_exclusive:
+            logger.info("Releasing GPU lock...")
+            gpu_lock.release()
+            logger.info("GPU lock released.")
 
 def check_api_server_exit(log: Logger):
     """Exits if the API server is not running.
@@ -345,26 +399,46 @@ def handle_error(response, logger):
 def construct_given_that_query(history: list, new_query: str) -> str:
     """
     Constructs a contextual query using previous interactions.
-    
+
     Args:
         history (list): A list of dictionaries with keys 'query', 'response', and 'is_answer'.
         new_query (str): The new query to construct with context.
-    
+
     Returns:
         str: A constructed query using "Given that" statements.
     """
-    
     if not history:
         return new_query  # No prior context, return the query as is
-    
+
     given_statements = [
         f"Given that {entry['response']}" 
         for entry in history if entry.get('is_answer', True)
     ]
-    
+
     if not given_statements:
         return new_query  # No valid prior context, return the new query as is
-    
+
     context_intro = " and ".join(given_statements)
-    
+
     return f"{context_intro}, {new_query}"  # Form the final structured query
+
+def get_query_lock():
+    """Returns the appropriate lock based on the gpu_exclusive mode."""
+    if gpu_exclusive:
+        return query_lock
+    else:
+        return gpu_lock
+
+def get_query_lock_type():
+    """Returns the appropriate lock type based on the gpu_exclusive mode."""
+    if gpu_exclusive:
+        return 'Thread'
+    else:
+        return 'GPU'
+
+def release_gpu_lock_and_exit(signum, frame):
+    if gpu_exclusive:
+        logger.info("Releasing GPU lock...")
+        gpu_lock.release()
+        logger.info("GPU lock released.")
+    sys.exit(0)
