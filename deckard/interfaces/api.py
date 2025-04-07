@@ -240,6 +240,7 @@ def libpages_query():
         response_summarizer = CompoundResponseSummarizer(chains['summarizer'], logger)
         final_response, response_was_summarized, has_valid_answers = response_summarizer.summarize(llm_inferences)
         summarizer_query_time = time_since(summarizer_start)
+        response['source_urls'] = []
 
         if has_valid_answers:
             sources_start = cur_timestamp()

@@ -17,7 +17,7 @@ class ResponseSourceExtractor:
         self.chain = chain
         self.logger = logger
 
-    def get_sources(self, query, response, chunks_used) -> tuple:
+    def get_sources(self, query, response, chunks_used, top_n=4) -> tuple:
         """ Determines the sources of a generated response.
 
         This is really fragile as it depends on the response metadata being in a specific format. This should eventually
@@ -34,13 +34,15 @@ class ResponseSourceExtractor:
         sources_used = []
 
         for chunk in chunks_used:
-            print (chunk['metadata']['source'])
             if chunk['metadata']['source_type'] == 'webpage' and chunk['metadata']['source'] is not None and chunk['metadata']['source'] != '':
+                print (chunk['metadata']['source'])
                 sources_used.append( {
                     "chunk": chunk['chunk'],
                     "source": chunk['metadata']['source']
                     }
                 )
+                if len(sources_used) >= top_n:
+                    break
         self.logger.info("Determining sources of response")
         chain_response = self.chain.invoke(
             {
