@@ -251,7 +251,7 @@ def libpages_query():
             sources_found, sources_reason, source_urls = response_sources.get_sources(query_value, final_response, chunks_used)
             response['sources_found'] = sources_found
             response['sources_reason'] = sources_reason
-            response['source_urls'] = source_urls
+            response['source_urls'] = source_urls['source_urls']
 
         response.update({
             'query': data.get('query'),
