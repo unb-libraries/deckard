@@ -74,8 +74,8 @@ def rawquery():
             llm = LLM(logger, get_api_llm_config()).get()
             logger.info("Building LLM Chains...")
             chains = build_llm_chains(llm)
-            chain = chains['chain-context-plus']
-
+            
+        chain = chains['chain-context-plus']
         chain_reponse = chain.invoke(
             {
                 "context": context,
@@ -83,7 +83,7 @@ def rawquery():
             }
         )
         return {
-            "response": chain_reponse['text']
+            "response": chain_reponse
         }
 
 
