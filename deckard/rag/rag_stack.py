@@ -100,12 +100,19 @@ class RagStack:
             limit=self.config['reranker']['max_raw_results'],
             max_distance=self.context_max_distance,
         )
+        self.log.info("Vector Results: %s", vec_results)
 
         self.log.info("Reranking Results: %s (%s) [%s]", query, embedding_query, self.pipeline_id)
         reranked_results = self.reranker.rerank(embedding_query, vec_results)
+        # reranked_results = vec_results
+        self.log.info("Reranked Results: %s", reranked_results)
+
 
         self.log.info("Querying Sparse Search for query: %s [%s]", query, self.pipeline_id)
         sparse_results = self.sparse_search.search(embedding_query)
+
+        self.log.info("Sparse Search Results: %s [%s]", query, self.pipeline_id)
+        self.log.info("Sparse Search Results: %s", sparse_results)
 
         self.log.info("Generating context for query: %s [%s]", query, self.pipeline_id)
         self.context, context_metadata = self.context_builder.build_context(

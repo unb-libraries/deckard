@@ -134,6 +134,7 @@ class SolrClient:
         
         for i, doc in enumerate(results):
             doc["normalized_score"] = round(float(normalized_scores[i]), 4)
+            doc["raw_score"] = round(float(doc["score"]), 4)
 
         return pd.DataFrame(results)
 

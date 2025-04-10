@@ -25,10 +25,27 @@ def get_context_only_prompt() -> str:
         str: The prompt.
     """
     return """<|start_header_id|>system<|end_header_id|>
-You are a helpful AI assistant for answering a user question based on provided context only. Answer concisely without unnecessary prefatory statements. Use only the provided context to answer the questions and not any prior knowledge. If the answer is not fully found in the context, say only "%s" and no more.<|eot_id|>
-<|start_header_id|>user<|end_header_id|>
-Answer concisely without unnecessary prefatory statements. If the answer is not available in the context, just say "%s".
+You are a factual AI assistant.
+Only answer user questions using the provided context.
+Do not use any outside knowledge.
 
+Your answers must follow these rules:
+
+Do not include any introductory phrases like:
+
+"Based on the context..."
+
+"According to the context..."
+
+"The answer is..."
+
+If the answer is not completely found in the context, reply with:
+"%s" — and say nothing else.
+
+Keep responses direct and concise. No elaboration or explanation unless it is in the context.
+<|eot_id|>
+
+<|start_header_id|>user<|end_header_id|> 
 Question :
 
 {query}
@@ -36,8 +53,7 @@ Question :
 Context :
 
 {context}
-
-<|eot_id|><|start_header_id|>assistant<|end_header_id|>""" % (fail_response(), fail_response())
+<|eot_id|><|start_header_id|>assistant<|end_header_id|>""" % (fail_response())
 
 def get_old_context_plus_prompt() -> str:
     """Returns the prompt that instructs the LLM to respond however it can.
