@@ -46,10 +46,10 @@ class LanceDB:
         db_filepath = os.path.join(self.DATA_PATH, '.' + name)
         if not os.path.exists(self.DATA_PATH):
             if create_if_not_exists:
-                self.log.info("Creating Database: %s", name)
+                self.log.info("Creating Database Path: %s", name)
                 os.makedirs(self.DATA_PATH)
             else:
-                self.log.error("Database does not exist.")
+                self.log.error("Database path does not exist.")
                 sys.exit(1)
         self.log.info(f"Connecting to Database: {name}")
         self.connection = lancedb.connect(db_filepath)
@@ -77,6 +77,8 @@ class LanceDB:
             mode="overwrite"
         )
 
+    ## Embedding Methods
+    ##
     def add_embeddings(
             self,
             document: list,
@@ -160,6 +162,48 @@ class LanceDB:
         return item_metadata, embeddings, embedding_id
 
     def query(
+            self,
+            query: str,
+            limit: int=25,
+            max_distance: int=5
+        ) -> list:
+        """Queries the database for embedding similarity.
+
+        Args:
+            query (str): The query to search for.
+            limit (int): The maximum number of results to return.
+            max_distance (int): The maximum distance to return.
+
+        Returns:
+            list: The results of the query.
+        """
+        results = self.embeddings_table.search(query).distance_range(upper_bound=max_distance).limit(limit).to_df()
+        # results = self.embeddings_table.search(query).distance_range(upper_bound=max_distance).to_df()
+        # Instead of specifying columns, we return all data but the vector.
+        results = results.drop(columns=['vector'])
+        return results
+
+    ## QA Methods
+    ##
+    def add_qa_question(
+            self,
+            question_metadata: dict,
+            create_table: bool=False
+        ) -> int:
+
+        # Wrap all dict values in a list
+        for key in question_metadata:
+            if not isinstance(question_metadata[key], list):
+                question_metadata[key] = [question_metadata[key]]
+
+        data = pa.Table.from_pydict(question_metadata)
+        self.log.info("Adding question %s to LanceDB.", data)
+        if create_table:
+            self._create_table(data)
+        else:
+            self.embeddings_table.add(data)
+ 
+    def question_query(
             self,
             query: str,
             limit: int=25,

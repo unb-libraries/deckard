@@ -33,6 +33,7 @@ class RagBuilder:
         """Builds the RAG pipeline."""
         self.database.flush_data()
         self.context_database.flush_data()
+        self.qa_database.flush_data()
         self.sparse_search.flush_data()
 
         for collector in self.collectors:
@@ -45,6 +46,34 @@ class RagBuilder:
                 return
             processed_items = 0
             pipeline_id = 0
+
+            # Build QA items
+            if self.config['qa']['questions']:
+                self.log.info("Building QA items")
+                # Creating table in database.
+                question_id = 0
+                is_first_question = True
+                for question in self.config['qa']['questions']:
+                    for query in question['queries']:
+                        self.log.info("Processing question: %s", query)
+                        question_data = {}
+                        question_data['id'] = gen_uuid()
+
+                        # Merge all question values except for queries into the question_data
+                        for key, value in question.items():
+                            if key != 'queries':
+                                question_data[key] = value
+
+                        question_data['query'] = query
+                        question_data['vector'] = self.qa_encoder.encode(query)
+                        self.qa_database.add_qa_question(
+                            question_data,
+                            is_first_question
+                        )
+                        if is_first_question:
+                            is_first_question = False
+                        question_id += 1
+
             for document_content, metadata in collector:
                 document = {'id': gen_uuid()}
 
@@ -109,6 +138,25 @@ class RagBuilder:
                 self.config['embedding_database']['name'],
                 self.log,
                 True
+            ]
+        )
+
+        self.qa_database = load_class(
+            self.config['qa']['database']['module_name'],
+            self.config['qa']['database']['class_name'],
+            [
+                self.config['qa']['database']['name'],
+                self.log,
+                True
+            ]
+        )
+
+        self.qa_encoder = load_class(
+            self.config['qa']['encoder']['module_name'],
+            self.config['qa']['encoder']['class_name'],
+            [
+                self.config['qa']['encoder']['model'],
+                self.log
             ]
         )
 
