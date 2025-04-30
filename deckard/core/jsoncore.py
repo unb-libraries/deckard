@@ -1,10 +1,11 @@
 """Provides JSON functions."""
 import json
 import re
+import numpy as np
 
 JSON_DUMP_INDENT = 4
 
-def json_dumper(data: dict, pretty: bool=True, sort_keys: bool=False) -> str:
+def json_dumper(data: dict, pretty: bool=True, sort_keys: bool=False, default=False) -> str:
     """Dumps a dictionary to a JSON string.
 
     Args:
@@ -72,3 +73,15 @@ def list_of_dicts_to_dict(data: list) -> dict:
     for index, dictionary in enumerate(data):
         final_dict[index] = dictionary
     return final_dict
+
+def make_json_safe(obj):
+    if isinstance(obj, np.ndarray):
+        return obj.tolist()
+    elif isinstance(obj, (np.generic,)):  # e.g., np.int64
+        return obj.item()
+    elif isinstance(obj, dict):
+        return {k: make_json_safe(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [make_json_safe(v) for v in obj]
+    else:
+        return obj

@@ -3,7 +3,7 @@ from langchain_community.llms import LlamaCpp
 from langchain.prompts import PromptTemplate
 from langchain_core.runnables import RunnableSequence
 
-from deckard.llm import get_context_only_prompt, get_context_plus_prompt, response_addresses_query_prompt, malicious_classification_prompt, explode_query_prompt, summarize_response_prompt, get_sources_prompt
+from deckard.llm import get_context_only_prompt, get_context_plus_prompt, response_addresses_query_prompt, malicious_classification_prompt, explode_query_prompt, summarize_response_prompt, get_sources_prompt, qa_response_prompt
 
 from .config import get_rag_pipelines
 
@@ -25,6 +25,26 @@ def build_rag_stacks(log: Logger) -> dict:
         )
         rs = getattr(c, w['rag']['stack']['class_name'])
         stacks[w['name']] = rs(w['rag'], log)
+    return stacks
+
+def build_qa_stacks(log: Logger) -> dict:
+    """Builds the QA stacks from the configuration.
+
+    Args:
+        log (Logger): The logger for the QA stacks.
+
+    Returns:
+        dict: The QA stacks.
+    """
+    stacks = {}
+    pipelines = get_rag_pipelines()
+    for w in pipelines.values():
+        c = __import__(
+            w['rag']['qa']['stack']['module_name'],
+            fromlist=['']
+        )
+        qas = getattr(c, w['rag']['qa']['stack']['class_name'])
+        stacks[w['name']] = qas(w['rag']['qa'], log)
     return stacks
 
 def build_llm_chains(llm: LlamaCpp) -> list[RunnableSequence]:
@@ -64,6 +84,10 @@ def build_llm_chains(llm: LlamaCpp) -> list[RunnableSequence]:
     chains['sources'] = build_llm_chain(
         llm,
         get_sources_prompt()
+    )
+    chains['qa'] = build_llm_chain(
+        llm,
+        qa_response_prompt()
     )
     return chains
 

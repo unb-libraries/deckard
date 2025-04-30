@@ -86,3 +86,15 @@ def get_context_plus_prompt() -> str:
     Question: {query}
 
     Response: """
+
+def get_qa_prompt(qa_sets) -> str:
+
+    return """### Instruction:
+    Read the context below and respond with an answer to the question. If you don't know the answer, just say that you don't know, don't try to make up an answer.
+
+    ### Input:
+    Context: {context}
+
+    Question: {query}
+
+    Response: """

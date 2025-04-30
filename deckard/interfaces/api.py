@@ -10,7 +10,7 @@ from threading import Lock
 from waitress import serve as waitress_serve
 
 from deckard.core import get_logger, json_dumper, load_class, list_of_dicts_to_dict, get_api_gpu_exclusive_mode
-from deckard.core.builders import build_llm_chains, build_rag_stacks
+from deckard.core.builders import build_llm_chains, build_rag_stacks, build_qa_stacks
 from deckard.core.config import get_api_host, get_api_llm_config, get_api_port, get_data_dir, get_gpu_lockfile, get_rag_pipeline
 from deckard.core.time import cur_timestamp, time_since
 from deckard.core.utils import report_memory_use, gen_uuid
@@ -26,6 +26,7 @@ query_lock = Lock()
 gpu_exclusive = get_api_gpu_exclusive_mode()
 logger = get_logger()
 
+qa_stacks = None
 stacks = None
 llm = None
 chains = None
@@ -91,7 +92,7 @@ def rawquery():
 @app.route("/query/v1", methods=['POST'])
 def libpages_query():
     """RAG query endpoint."""
-    global stacks, llm, chains
+    global stacks, qa_stacks, llm, chains
 
     data = request.json
     query_value = data.get('query')
@@ -108,9 +109,12 @@ def libpages_query():
     llm_model_load_time = 0
     llm_query_time = 0
     malicious_query_classification_time = 0
+    qa_search_time = 0
     query_build_time = 0
     rag_stack_build_time = 0
     reason_query_time = 0
+    summarizer_query_time = 0
+    response_was_summarized = False
 
     query_lock_type = get_query_lock_type()
     logger.info(f"Waiting for {query_lock_type} lock...")
@@ -121,6 +125,9 @@ def libpages_query():
         logger.info(f"{query_lock_type} lock acquired after {query_lock_wait_time} seconds.")
 
         if not gpu_exclusive:
+            logger.info("Building QA Stacks...")
+            qa_stacks = build_qa_stacks(logger)
+
             logger.info("Building Query Stacks...")
             rag_stack_build_start = cur_timestamp()
             stacks = build_rag_stacks(logger)
@@ -137,143 +144,207 @@ def libpages_query():
             chain_build_time = time_since(chain_build_start)
 
         stack = stacks[pipeline]
+        qa_stack = qa_stacks[pipeline]
         llm_inferences = []
         answer_data = {}
+        qa_answered = False
         is_answer = False
 
-        # Malicious Classification
-        logger.info("Classifying Maliciousness...")
-        is_malicious_start = cur_timestamp()
-        malicious_classifier = MaliciousClassifier(query_value, chains['malicious'], logger)
-        classification, reason, classification_data = malicious_classifier.question_has_malicious_intent()
-        malicious_query_classification_time = time_since(is_malicious_start)
-        response.update({
-            'malicious_query_classification': classification,
-            'malicious_query_classification_reason': reason,
-            'malicious_query_classification_response': classification_data
-        })
+        # QA Search, Avoid RAG Stack if Possible
+        if qa_stack.has_questions():
+            logger.info("Searching QA Stack...")
+            qa_search_start = cur_timestamp()
+            qa_response = qa_stack.query(query_value, chains['qa'], get_api_llm_config())
+            qa_search_time = time_since(qa_search_start)
+            response['qa_response'] = qa_response
+            response['qa_search_time'] = qa_search_time
+            response['qa_response_metadata'] = qa_response['metadata']
+            if qa_response['has_response']:
+                logger.info("QA Stack has answer...")
+                qa_answered = True
+                is_answer = True
+                response.update({
+                    'response': qa_response['response'],
+                    'is_answer': True,
+                    'qa_response_used': True,
+                    'qa_response_metadata': qa_response['metadata']
+                })
+                response['sources_found'] = True
+                response['sources_reason'] = "QA Stack"
 
-        if classification != 'Safe':
-            logger.info("Classification: Not Safe...")
+                ## Extract the URLs from the metadata and place them in a list of source_urls
+                source_urls = []
+                if 'links' in qa_response:
+                    for link in qa_response['links']:
+                        if 'url' in link:
+                            source_urls.append(link['url'])
+                response['source_urls'] = source_urls
+
+                times = {
+                    'model_load_time': llm_model_load_time,
+                    'chain_build_time': chain_build_time,
+                    'query_lock_type': query_lock_type,
+                    'query_lock_wait_time': query_lock_wait_time,
+                    'rag_stack_build_time': rag_stack_build_time,
+                    'query_build_time': query_build_time,
+                    'malicious_query_classification_time': malicious_query_classification_time,
+                    'qa_search_time': qa_search_time,
+                    'inference_time': llm_query_time,
+                    'reason_query_time': reason_query_time,
+                    'summary_time': summarizer_query_time,
+                    'response_was_summarized': response_was_summarized
+                }
+            else:
+                logger.info("QA Stack has no answer...")
+                response.update({
+                    'qa_response_used': False,
+                    'qa_response_metadata': qa_response['metadata']
+                })
+        else:
+            logger.info("QA stack has no questions...")
             response.update({
-                'response': fail_response(),
-                'not_answer_reason': classification_data.get('reason')
+                'qa_response_used': False,
             })
+        
+        if not qa_answered:
+            # Malicious Classification
+            logger.info("Classifying Maliciousness...")
+            is_malicious_start = cur_timestamp()
+            malicious_classifier = MaliciousClassifier(query_value, chains['malicious'], logger)
+            classification, reason, classification_data = malicious_classifier.question_has_malicious_intent()
+            malicious_query_classification_time = time_since(is_malicious_start)
+            response.update({
+                'malicious_query_classification': classification,
+                'malicious_query_classification_reason': reason,
+                'malicious_query_classification_response': classification_data
+            })
+
+            if classification != 'Safe':
+                logger.info("Classification: Not Safe...")
+                response.update({
+                    'response': fail_response(),
+                    'not_answer_reason': classification_data.get('reason')
+                })
+                times = {
+                    'model_load_time': llm_model_load_time,
+                    'chain_build_time': chain_build_time,
+                    'query_lock_type': query_lock_type,
+                    'query_lock_wait_time': query_lock_wait_time,
+                    'rag_stack_build_time': rag_stack_build_time,
+                    'query_build_time': 0,
+                    'malicious_query_classification_time': malicious_query_classification_time,
+                    'qa_search_time': qa_search_time,
+                    'inference_time': 0,
+                    'reason_query_time': 0,
+                    'postprocess_time': 0
+                }
+            else:
+                logger.info("Classification: Safe...")
+
+                # Build Query
+                logger.info("Building LLM Object...")
+                query_build_start = cur_timestamp()
+                llm_query = LLMQuery(response['id'], stack, pipeline, data.get('client'), get_api_llm_config(), logger)
+                query_build_time = time_since(query_build_start)
+
+                # Compound Extraction
+                logger.info("Compound Classification...")
+                compound_classifier = CompoundClassifier(query_value, chains['compound'], logger)
+                classified_compounds, classifier_response, reason = compound_classifier.explode_query()
+                if not classified_compounds or 'queries' not in classified_compounds or not classified_compounds['queries']:
+                    logger.info("Compound Classification Failed...")
+                    response.update({
+                        'compound_query_classification_response': classifier_response,
+                        'compound_query_classification_success': False,
+                        'compound_query_classification_reason': reason
+                    })
+                    queries_to_infer = {
+                        '1': query_value
+                    }
+                else:
+                    logger.info("Compound Classification Succeeded...")
+                    response.update({
+                        'compound_query_classification_response': classifier_response,
+                        'compound_query_classification': classified_compounds,
+                        'compound_query_classification_success': True
+                    })
+                    queries_to_infer = classified_compounds['queries']
+
+                response.update({
+                    'queries_to_infer': queries_to_infer
+                })
+
+                for query_value in queries_to_infer.values():
+                    constructed_query = construct_given_that_query(llm_inferences, query_value)
+
+                    # Query LLM
+                    logger.info("Querying LLM...")
+                    llm_query_start = cur_timestamp()
+                    llm_response = llm_query.query(constructed_query, chains['chain-context-only'])
+                    response.update(llm_response)
+                    llm_query_time = time_since(llm_query_start)
+
+                    # Response Validity
+                    logger.info("Determining if response answers question...")
+                    response_value = response['response']
+                    reason_query_start = cur_timestamp()
+                    verifier = ResponseVerifier(constructed_query, response_value, chains['chain-verify-response'], logger)
+                    is_answer, reason, answer_data = verifier.response_answers_question()
+                    reason_query_time = time_since(reason_query_start)
+                    llm_inferences.append(
+                        {
+                            'query': query_value,
+                            'constructed_query': constructed_query,
+                            'response': response_value,
+                            'is_answer': is_answer,
+                            'not_answer_reason': None if is_answer else reason,
+                            'answer_data': answer_data,
+                            'chunks_used': response['metadata']['contextbuilder']['chunks_used']
+                        }
+                    )
+
+            summarizer_start = cur_timestamp()
+            response_summarizer = CompoundResponseSummarizer(chains['summarizer'], logger)
+            final_response, response_was_summarized, has_valid_answers = response_summarizer.summarize(llm_inferences)
+            summarizer_query_time = time_since(summarizer_start)
+            response['source_urls'] = []
+
+            if has_valid_answers:
+                sources_start = cur_timestamp()
+                chunks_used = []
+                for inference in llm_inferences:
+                    chunks_used.extend(inference['chunks_used'])
+                response_sources = ResponseSourceExtractor(chains['sources'], logger)
+                sources_found, sources_reason, source_urls = response_sources.get_sources(query_value, final_response, chunks_used)
+                response['sources_found'] = sources_found
+                response['sources_reason'] = sources_reason
+                response['source_urls'] = source_urls['source_urls']
+
+            response.update({
+                'query': data.get('query'),
+                'response': final_response,
+                'is_answer': has_valid_answers,
+                'inference_results': list_of_dicts_to_dict(llm_inferences)
+            })
+
             times = {
                 'model_load_time': llm_model_load_time,
                 'chain_build_time': chain_build_time,
                 'query_lock_type': query_lock_type,
                 'query_lock_wait_time': query_lock_wait_time,
                 'rag_stack_build_time': rag_stack_build_time,
-                'query_build_time': 0,
+                'query_build_time': query_build_time,
+                'qa_search_time': qa_search_time,
                 'malicious_query_classification_time': malicious_query_classification_time,
-                'inference_time': 0,
-                'reason_query_time': 0,
-                'postprocess_time': 0
+                'inference_time': llm_query_time,
+                'reason_query_time': reason_query_time,
+                'summary_time': summarizer_query_time,
+                'response_was_summarized': response_was_summarized
             }
-        else:
-            logger.info("Classification: Safe...")
 
-            # Build Query
-            logger.info("Building LLM Object...")
-            query_build_start = cur_timestamp()
-            llm_query = LLMQuery(response['id'], stack, pipeline, data.get('client'), get_api_llm_config(), logger)
-            query_build_time = time_since(query_build_start)
-
-            # Compound Extraction
-            logger.info("Compound Classification...")
-            compound_classifier = CompoundClassifier(query_value, chains['compound'], logger)
-            classified_compounds, classifier_response, reason = compound_classifier.explode_query()
-            if not classified_compounds or 'queries' not in classified_compounds or not classified_compounds['queries']:
-                logger.info("Compound Classification Failed...")
-                response.update({
-                    'compound_query_classification_response': classifier_response,
-                    'compound_query_classification_success': False,
-                    'compound_query_classification_reason': reason
-                })
-                queries_to_infer = {
-                    '1': query_value
-                }
-            else:
-                logger.info("Compound Classification Succeeded...")
-                response.update({
-                    'compound_query_classification_response': classifier_response,
-                    'compound_query_classification': classified_compounds,
-                    'compound_query_classification_success': True
-                })
-                queries_to_infer = classified_compounds['queries']
-
-            response.update({
-                'queries_to_infer': queries_to_infer
-            })
-
-            for query_value in queries_to_infer.values():
-                constructed_query = construct_given_that_query(llm_inferences, query_value)
-
-                # Query LLM
-                logger.info("Querying LLM...")
-                llm_query_start = cur_timestamp()
-                llm_response = llm_query.query(constructed_query, chains['chain-context-only'])
-                response.update(llm_response)
-                llm_query_time = time_since(llm_query_start)
-
-                # Response Validity
-                logger.info("Determining if response answers question...")
-                response_value = response['response']
-                reason_query_start = cur_timestamp()
-                verifier = ResponseVerifier(constructed_query, response_value, chains['chain-verify-response'], logger)
-                is_answer, reason, answer_data = verifier.response_answers_question()
-                reason_query_time = time_since(reason_query_start)
-                llm_inferences.append(
-                    {
-                        'query': query_value,
-                        'constructed_query': constructed_query,
-                        'response': response_value,
-                        'is_answer': is_answer,
-                        'not_answer_reason': None if is_answer else reason,
-                        'answer_data': answer_data,
-                        'chunks_used': response['metadata']['contextbuilder']['chunks_used']
-                    }
-                )
-
-        summarizer_start = cur_timestamp()
-        response_summarizer = CompoundResponseSummarizer(chains['summarizer'], logger)
-        final_response, response_was_summarized, has_valid_answers = response_summarizer.summarize(llm_inferences)
-        summarizer_query_time = time_since(summarizer_start)
-        response['source_urls'] = []
-
-        if has_valid_answers:
-            sources_start = cur_timestamp()
-            chunks_used = []
-            for inference in llm_inferences:
-                chunks_used.extend(inference['chunks_used'])
-            response_sources = ResponseSourceExtractor(chains['sources'], logger)
-            sources_found, sources_reason, source_urls = response_sources.get_sources(query_value, final_response, chunks_used)
-            response['sources_found'] = sources_found
-            response['sources_reason'] = sources_reason
-            response['source_urls'] = source_urls['source_urls']
-
-        response.update({
-            'query': data.get('query'),
-            'response': final_response,
-            'is_answer': has_valid_answers,
-            'inference_results': list_of_dicts_to_dict(llm_inferences)
-        })
-
-        times = {
-            'model_load_time': llm_model_load_time,
-            'chain_build_time': chain_build_time,
-            'query_lock_type': query_lock_type,
-            'query_lock_wait_time': query_lock_wait_time,
-            'rag_stack_build_time': rag_stack_build_time,
-            'query_build_time': query_build_time,
-            'malicious_query_classification_time': malicious_query_classification_time,
-            'inference_time': llm_query_time,
-            'reason_query_time': reason_query_time,
-            'summary_time': summarizer_query_time,
-            'response_was_summarized': response_was_summarized
-        }
-
+    response.update({
+        'qa_answered': qa_answered,
+    })
     response = calculate_response_times(response, g.start, times)
     response = process_response(response, pipeline, logger)
     error_response = handle_error(response, logger)
@@ -302,7 +373,7 @@ def db_search_query():
         query_lock_wait_time = time_since(query_lock_start)
         logger.info(f"{query_lock_type} lock acquired after {query_lock_wait_time} seconds.")
 
-        if not gpu_exclusive:
+        if not gpu_exclusive:      
             logger.info("Building Query Stacks...")
             rag_stack_build_start = cur_timestamp()
             stacks = build_rag_stacks(logger)
@@ -329,7 +400,7 @@ def db_search_query():
 # API Start-up.
 def start() -> None:
     """Starts the API server."""
-    global stacks, llm, chains
+    global stacks, qa_stacks, llm, chains
     report_memory_use(logger)
     logger.info("Starting API server...")
 
@@ -338,6 +409,9 @@ def start() -> None:
         gpu_lock.acquire()
         logger.info("GPU lock acquired.")
         signal.signal(signal.SIGINT, release_gpu_lock_and_exit)
+
+        logger.info("Building QA Stacks...")
+        qa_stacks = build_qa_stacks(logger)
 
         logger.info("Building Query Stacks...")
         stacks = build_rag_stacks(logger)
@@ -392,7 +466,7 @@ def calculate_response_times(response, start_time, times):
 
 def process_response(response, pipeline, logger):
     postprocess_start_time = cur_timestamp()
-    if response['is_answer']:
+    if response['is_answer'] and response['qa_answered'] != True:
         config = get_rag_pipeline(pipeline)['rag']
         response_processor = load_class(config['response_processor']['module_name'], config['response_processor']['class_name'], [response['response'], logger])
         response['response'] = response_processor.get_processed_response()

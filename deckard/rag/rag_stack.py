@@ -94,6 +94,7 @@ class RagStack:
         self.log.info("Generating embedding for query: %s (%s) [%s]", query, embedding_query, self.pipeline_id)
         query_vector = self.encoder.encode(embedding_query)
 
+        # LLM
         self.log.info("Querying Vector Database with embeddings: %s [%s] (Max Distance: %s)", query, self.pipeline_id, self.context_max_distance)
         vec_results = self.database.query(
             query_vector,

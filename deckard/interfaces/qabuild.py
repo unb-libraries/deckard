@@ -1,15 +1,14 @@
-"""Provides a command to build RAG pipelines."""
+"""Provides a command to build QA pipelines."""
 import sys
 from logging import Logger
 
 from deckard.core import get_rag_pipelines, get_rag_pipeline, get_logger, available_rag_pipelines_message
-from deckard.rag import RagBuilder
 from deckard.qa import QABuilder
 
-DECKARD_CMD_STRING = 'build:rag'
+DECKARD_CMD_STRING = 'build:qa'
 
 def start(args: list=sys.argv) -> None:
-    """Starts the RAG pipeline builder.
+    """Starts the QA builder.
 
     Args:
         args (list, optional): The arguments for the builder. Defaults to sys.argv.
@@ -18,9 +17,10 @@ def start(args: list=sys.argv) -> None:
     validate_args(args, log)
     pipeline = get_rag_pipeline(args[1])
 
-    log.info("Building RAG Pipeline %s", pipeline['name'])
-    builder = RagBuilder(pipeline['rag'], log)
-    builder.build()
+    log.info("Building QA Pipeline %s", pipeline['name'])
+    qa_builder = QABuilder(pipeline['rag'], log)
+    qa_builder.build()
+
 
 def validate_args(args: list, log: Logger) -> None:
     """Validates the arguments for the command and exits if invalid.

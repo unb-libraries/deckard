@@ -6,6 +6,7 @@ from typing import TypeVar
 
 import lancedb
 import pyarrow as pa
+import pandas as pd
 from lance.vector import vec_to_table
 
 from deckard.core import get_data_dir
@@ -189,19 +190,23 @@ class LanceDB:
             self,
             question_metadata: dict,
             create_table: bool=False
-        ) -> int:
+        ) -> None:
 
-        # Wrap all dict values in a list
+        # NOTE: Each value is wrapped in a list to form a 1-row DataFrame.
+        # This ensures all columns have equal-length arrays, as required by Pandas and LanceDB.
+        # Without this, you'll get "ValueError: All arrays must be of the same length".
+        # See: https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html
         for key in question_metadata:
-            if not isinstance(question_metadata[key], list):
-                question_metadata[key] = [question_metadata[key]]
+            question_metadata[key] = [question_metadata[key]]
 
-        data = pa.Table.from_pydict(question_metadata)
-        self.log.info("Adding question %s to LanceDB.", data)
+        # OLD data = pa.Table.from_pydict(question_metadata)
+        df = pd.DataFrame(question_metadata)
+
+        self.log.info("Adding question %s to LanceDB.", df)
         if create_table:
-            self._create_table(data)
+            self._create_table(df)
         else:
-            self.embeddings_table.add(data)
+            self.embeddings_table.add(df)
  
     def question_query(
             self,
