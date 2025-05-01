@@ -1,4 +1,5 @@
 from logging import Logger
+import yaml
 
 from deckard.core import load_class
 from deckard.core.utils import gen_uuid
@@ -12,6 +13,7 @@ class QABuilder:
         self.log = log
         self.config = config
         self._init_qa_builder_components()
+        self._load_questions_from_file()
 
     def build(self) -> None:
         if self.config['qa']['database'] and self.config['qa']['questions']:
@@ -63,3 +65,18 @@ class QABuilder:
                     self.log
                 ]
             )
+
+    def _load_questions_from_file(self) -> None:
+        """Loads questions from the external qa.yml file."""
+        questions_file = self.config['qa'].get('questions_file', 'qa.yml')
+        try:
+            with open(questions_file, 'r') as file:
+                questions_data = yaml.safe_load(file)
+                self.config['qa']['questions'] = questions_data.get('questions', [])
+                self.log.info("Loaded questions from %s", questions_file)
+        except FileNotFoundError:
+            self.log.error("Questions file %s not found.", questions_file)
+            self.config['qa']['questions'] = []
+        except yaml.YAMLError as e:
+            self.log.error("Error parsing questions file %s: %s", questions_file, str(e))
+            self.config['qa']['questions'] = []

@@ -1,0 +1,29 @@
+questions:
+  -
+    queries:
+      - What are the library's open hours?
+      - What time does the library open?
+    response: UNB Libraries hours of operation change often, and can vary between locations. Because of this, I often do not have the most current information. Please check the library website's hours page for the most current information.
+    links:
+      - label: Library Hours Page
+        url: https://lib.unb.ca/about/hours
+  -
+    queries:
+      - Where is the bathroom?
+      - Where are the washrooms?
+      - Where are the accessible washrooms?
+      - Where is the nearest washroom?
+      - Where are the disability washrooms?
+      - Where are the wheelchair accessible washrooms?
+    response: Washroom location depends on the building you are in. Please check the below websites for the floor plans and most current information. Information on Wheelchair accessible washrooms is also available in the link below.
+    links:
+      - label: Floor Plans
+        url: https://lib.unb.ca/about/floor-plans
+      - label: Services For Persons With Disabilities
+        url: https://lib.unb.ca/services/services-persons-disabilities
+  - queries:
+      - How can I access online journals?
+    response: You can access online journals by logging in with your university account through the library portal.
+    links:
+      - label: Online Journals Portal
+        url: https://lib.unb.ca/eresources?form_id=eres_journals
