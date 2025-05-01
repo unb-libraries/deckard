@@ -6,9 +6,9 @@ api:
       type: "llama"
       repo: "NousResearch/Hermes-3-Llama-3.1-8B-GGUF"
       filename: "Hermes-3-Llama-3.1-8B.Q8_0.gguf"
-      max_response_tokens: 128
+      max_response_tokens: 256
       n_batch: 4096
-      n_ctx: 4096
+      n_ctx: 8096
       n_gpu_layers: -1
       repeat_penalty: 1.176
       temperature: 0.8
@@ -18,7 +18,9 @@ api:
       verbose: True
   gpu_lock_file: 'RTX_4090_1.lock'
   gpu_exclusive_mode: True
+
 data_dir: '/home/core/llm/chatbot/data'
+
 rag:
   libpages:
     name: 'libpages'
@@ -27,6 +29,22 @@ rag:
       stack:
         module_name: 'deckard.rag'
         class_name: 'RagStack'
+      qa:
+        name: 'LIBPages Standard'
+        stack:
+          module_name: 'deckard.qa'
+          class_name: 'QAStack'
+        top_k: 5
+        max_distance: 0.8
+        database:
+          module_name: 'deckard.databases'
+          class_name: 'LanceDB'
+          name: 'libpages_qa'
+        encoder:
+          module_name: 'deckard.encoders'
+          class_name: 'SentenceTransformerEncoder'
+          model: 'intfloat/multilingual-e5-large-instruct'
+        questions_file: 'qa.yml'
       collectors:
         -
           name: 'Library Pages'
@@ -39,7 +57,7 @@ rag:
             images_to_alt: True
             unicode_snob: True
       context:
-        size: 4096
+        size: 8096
         max_vector_distance: 0.4
       chunker:
         module_name: 'deckard.chunkers'
@@ -75,7 +93,7 @@ rag:
       reranker:
         module_name: 'deckard.encoders'
         class_name: 'SentenceTransformerEncoder'
-        model: 'BAAI/bge-reranker-v2-m3'
+        model: 'mixedbread-ai/mxbai-rerank-large-v1'
         max_raw_results: 10
       response_processor:
         module_name: 'deckard.response_processors'
