@@ -113,6 +113,7 @@ def libpages_query():
     query_build_time = 0
     rag_stack_build_time = 0
     reason_query_time = 0
+    sources_time = 0
     summarizer_query_time = 0
     response_was_summarized = False
 
@@ -190,6 +191,7 @@ def libpages_query():
                     'malicious_query_classification_time': malicious_query_classification_time,
                     'qa_search_time': qa_search_time,
                     'inference_time': llm_query_time,
+                    'sources_time': sources_time,
                     'reason_query_time': reason_query_time,
                     'summary_time': summarizer_query_time,
                     'response_was_summarized': response_was_summarized
@@ -234,6 +236,7 @@ def libpages_query():
                     'query_build_time': 0,
                     'malicious_query_classification_time': malicious_query_classification_time,
                     'qa_search_time': qa_search_time,
+                    'sources_time': sources_time,
                     'inference_time': 0,
                     'reason_query_time': 0,
                     'postprocess_time': 0
@@ -247,7 +250,7 @@ def libpages_query():
                 llm_query = LLMQuery(response['id'], stack, pipeline, data.get('client'), get_api_llm_config(), logger)
                 query_build_time = time_since(query_build_start)
 
-                # Compound Extraction
+                # Compound Query Extraction
                 logger.info("Compound Classification...")
                 compound_classifier = CompoundClassifier(query_value, chains['compound'], logger)
                 classified_compounds, classifier_response, reason = compound_classifier.explode_query()
@@ -316,6 +319,7 @@ def libpages_query():
                     chunks_used.extend(inference['chunks_used'])
                 response_sources = ResponseSourceExtractor(chains['sources'], logger)
                 sources_found, sources_reason, source_urls = response_sources.get_sources(query_value, final_response, chunks_used)
+                sources_time = time_since(sources_time)
                 response['sources_found'] = sources_found
                 response['sources_reason'] = sources_reason
                 response['source_urls'] = source_urls['source_urls']
@@ -338,6 +342,7 @@ def libpages_query():
                 'malicious_query_classification_time': malicious_query_classification_time,
                 'inference_time': llm_query_time,
                 'reason_query_time': reason_query_time,
+                'sources_time': sources_time,
                 'summary_time': summarizer_query_time,
                 'response_was_summarized': response_was_summarized
             }
