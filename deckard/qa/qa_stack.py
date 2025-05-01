@@ -34,7 +34,10 @@ class QAStack:
         if not self.config:
             self.log.warning("QA stack has no config.")
             return False
-        return len(self.config['questions']) > 0
+        if not self.qa_database.has_qa_data():
+            self.log.warning("QA database is not connectable or has no data.")
+            return False
+        return True
 
     def logger(self) -> Logger:
         """Returns the logger.

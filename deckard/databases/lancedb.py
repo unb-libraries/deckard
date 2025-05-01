@@ -229,3 +229,16 @@ class LanceDB:
         # Instead of specifying columns, we return all data but the vector.
         results = results.drop(columns=['vector'])
         return results
+
+    def has_qa_data(self) -> bool:
+        """Checks if the QA table exists and has at least one row."""
+        try:
+            if not self.embeddings_table:
+                self.log.warning("Embeddings table does not exist.")
+                return False
+
+            # Check if the table has at least one row
+            return self.embeddings_table.count_rows() > 0
+        except Exception as e:
+            self.log.error("Error checking QA data: %s", str(e))
+            return False
