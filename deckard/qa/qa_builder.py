@@ -1,8 +1,11 @@
-from logging import Logger
 import yaml
+
+from logging import Logger
+from pydantic import ValidationError
 
 from deckard.core import load_class
 from deckard.core.utils import gen_uuid
+from deckard.qa.qa_validator import QAFile
 
 class QABuilder:
     def __init__(
@@ -22,13 +25,13 @@ class QABuilder:
             question_id = 0
             is_first_question = True
             for question in self.config['qa']['questions']:
-                for query in question['queries']:
+                for query in question.queries:
                     self.log.info("Processing question: %s", query)
                     question_data = {}
                     question_data['id'] = gen_uuid()
                     question_data['question'] = query
 
-                    for key, value in question.items():
+                    for key, value in question.dict().items():
                         if key != 'queries':
                             question_data[key] = value
 
@@ -67,16 +70,21 @@ class QABuilder:
             )
 
     def _load_questions_from_file(self) -> None:
-        """Loads questions from the external qa.yml file."""
+        """Loads and validates questions from the external qa.yml file."""
         questions_file = self.config['qa'].get('questions_file', 'qa.yml')
         try:
             with open(questions_file, 'r') as file:
                 questions_data = yaml.safe_load(file)
-                self.config['qa']['questions'] = questions_data.get('questions', [])
-                self.log.info("Loaded questions from %s", questions_file)
+                # Validate using Pydantic
+                validated_data = QAFile(**questions_data)
+                self.config['qa']['questions'] = validated_data.questions
+                self.log.info("Loaded and validated questions from %s", questions_file)
         except FileNotFoundError:
             self.log.error("Questions file %s not found.", questions_file)
             self.config['qa']['questions'] = []
         except yaml.YAMLError as e:
             self.log.error("Error parsing questions file %s: %s", questions_file, str(e))
+            self.config['qa']['questions'] = []
+        except ValidationError as e:
+            self.log.error("Validation error in questions file %s: %s", questions_file, str(e))
             self.config['qa']['questions'] = []
