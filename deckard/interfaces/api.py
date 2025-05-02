@@ -15,6 +15,7 @@ from deckard.core.config import get_api_host, get_api_llm_config, get_api_port, 
 from deckard.core.time import cur_timestamp, time_since
 from deckard.core.utils import report_memory_use, gen_uuid
 from deckard.llm import LLM, LLMQuery, ResponseVerifier, MaliciousClassifier, CompoundClassifier, CompoundResponseSummarizer, ResponseSourceExtractor, fail_response
+from deckard.interfaces.services.qa_service import query_qa_stack
 
 DECKARD_CMD_STRING = 'api:start'
 
@@ -155,8 +156,7 @@ def libpages_query():
         if qa_stack.has_questions():
             logger.info("Searching QA Stack...")
             qa_search_start = cur_timestamp()
-            qa_response = qa_stack.query(query_value, chains['qa'], get_api_llm_config())
-            qa_search_time = time_since(qa_search_start)
+            qa_response, qa_search_time, source_urls = query_qa_stack(qa_stack, query_value, chains, logger)
             response['qa_response'] = qa_response
             response['qa_search_time'] = qa_search_time
             response['qa_response_metadata'] = qa_response['metadata']
@@ -172,13 +172,6 @@ def libpages_query():
                 })
                 response['sources_found'] = True
                 response['sources_reason'] = "QA Stack"
-
-                ## Extract the URLs from the metadata and place them in a list of source_urls
-                source_urls = []
-                if 'links' in qa_response:
-                    for link in qa_response['links']:
-                        if 'url' in link:
-                            source_urls.append(link['url'])
                 response['source_urls'] = source_urls
 
                 times = {
