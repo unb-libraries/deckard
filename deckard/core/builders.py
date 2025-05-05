@@ -27,26 +27,6 @@ def build_rag_stacks(log: Logger) -> dict:
         stacks[w['name']] = rs(w['rag'], log)
     return stacks
 
-def build_qa_stacks(log: Logger) -> dict:
-    """Builds the QA stacks from the configuration.
-
-    Args:
-        log (Logger): The logger for the QA stacks.
-
-    Returns:
-        dict: The QA stacks.
-    """
-    stacks = {}
-    pipelines = get_rag_pipelines()
-    for w in pipelines.values():
-        c = __import__(
-            w['rag']['qa']['stack']['module_name'],
-            fromlist=['']
-        )
-        qas = getattr(c, w['rag']['qa']['stack']['class_name'])
-        stacks[w['name']] = qas(w['rag']['qa'], log)
-    return stacks
-
 def build_llm_chains(llm: LlamaCpp) -> list[RunnableSequence]:
     """Builds the LLM chains from the LLM.
 

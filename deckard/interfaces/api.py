@@ -10,12 +10,12 @@ from threading import Lock
 from waitress import serve as waitress_serve
 
 from deckard.core import get_logger, json_dumper, load_class, list_of_dicts_to_dict, get_api_gpu_exclusive_mode
-from deckard.core.builders import build_llm_chains, build_rag_stacks, build_qa_stacks
+from deckard.core.builders import build_llm_chains, build_rag_stacks
 from deckard.core.config import get_api_host, get_api_llm_config, get_api_port, get_data_dir, get_gpu_lockfile, get_rag_pipeline
 from deckard.core.time import cur_timestamp, time_since
 from deckard.core.utils import report_memory_use, gen_uuid
 from deckard.llm import LLM, LLMQuery, ResponseVerifier, MaliciousClassifier, CompoundClassifier, CompoundResponseSummarizer, ResponseSourceExtractor, fail_response
-from deckard.interfaces.services.qa_service import query_qa_stack
+from deckard.interfaces.services.qa_service import build_qa_stacks, init_qa_service, query_qa_stack
 
 DECKARD_CMD_STRING = 'api:start'
 
@@ -31,6 +31,7 @@ qa_stacks = None
 stacks = None
 llm = None
 chains = None
+timings = {}
 
 @app.before_request
 def before_request():
@@ -58,7 +59,7 @@ def health_check():
 @app.route("/query/raw", methods=['POST'])
 def rawquery():
     """Direct LLM query. Not logged or for general use."""
-    global stacks, llm, chains
+    global stacks, llm, chains, timings
 
     data = request.json
     context = data.get('context')
@@ -69,7 +70,7 @@ def rawquery():
     logger.info(f"Waiting for {query_lock_type} lock...")
     query_lock_start = cur_timestamp()
     with get_query_lock():
-        query_lock_wait_time = time_since(query_lock_start)
+        timings['query_lock_wait_time'] = time_since(query_lock_start)
         logger.info(f"{query_lock_type} lock acquired after {query_lock_wait_time} seconds.")
 
         if not gpu_exclusive:
@@ -93,7 +94,7 @@ def rawquery():
 @app.route("/query/v1", methods=['POST'])
 def libpages_query():
     """RAG query endpoint."""
-    global stacks, qa_stacks, llm, chains
+    global stacks, qa_stacks, llm, chains, timings
 
     data = request.json
     query_value = data.get('query')
@@ -105,6 +106,9 @@ def libpages_query():
         'exclusive_mode': gpu_exclusive
     }
 
+    # Service inits.
+    init_qa_service(timings)
+
     # Inits
     chain_build_time = 0
     llm_model_load_time = 0
@@ -112,7 +116,6 @@ def libpages_query():
     malicious_query_classification_time = 0
     qa_search_time = 0
     query_build_time = 0
-    rag_stack_build_time = 0
     reason_query_time = 0
     sources_time = 0
     summarizer_query_time = 0
@@ -123,17 +126,16 @@ def libpages_query():
     query_lock_start = cur_timestamp()
 
     with get_query_lock():
-        query_lock_wait_time = time_since(query_lock_start)
-        logger.info(f"{query_lock_type} lock acquired after {query_lock_wait_time} seconds.")
+        timings['query_lock_wait_time'] = time_since(query_lock_start)
+        logger.info(f"{query_lock_type} lock acquired after {timings['query_lock_wait_time']} seconds.")
 
         if not gpu_exclusive:
-            logger.info("Building QA Stacks...")
-            qa_stacks = build_qa_stacks(logger)
+            qa_stacks = build_qa_stacks(logger, timings)
 
             logger.info("Building Query Stacks...")
             rag_stack_build_start = cur_timestamp()
             stacks = build_rag_stacks(logger)
-            rag_stack_build_time = time_since(rag_stack_build_start)
+            timings['rag_stack_build_time'] = time_since(rag_stack_build_start)
 
             logger.info("Loading LLM Model...")
             llm_model_load_start = cur_timestamp()
@@ -178,8 +180,6 @@ def libpages_query():
                     'model_load_time': llm_model_load_time,
                     'chain_build_time': chain_build_time,
                     'query_lock_type': query_lock_type,
-                    'query_lock_wait_time': query_lock_wait_time,
-                    'rag_stack_build_time': rag_stack_build_time,
                     'query_build_time': query_build_time,
                     'malicious_query_classification_time': malicious_query_classification_time,
                     'qa_search_time': qa_search_time,
@@ -224,8 +224,6 @@ def libpages_query():
                     'model_load_time': llm_model_load_time,
                     'chain_build_time': chain_build_time,
                     'query_lock_type': query_lock_type,
-                    'query_lock_wait_time': query_lock_wait_time,
-                    'rag_stack_build_time': rag_stack_build_time,
                     'query_build_time': 0,
                     'malicious_query_classification_time': malicious_query_classification_time,
                     'qa_search_time': qa_search_time,
@@ -328,8 +326,6 @@ def libpages_query():
                 'model_load_time': llm_model_load_time,
                 'chain_build_time': chain_build_time,
                 'query_lock_type': query_lock_type,
-                'query_lock_wait_time': query_lock_wait_time,
-                'rag_stack_build_time': rag_stack_build_time,
                 'query_build_time': query_build_time,
                 'qa_search_time': qa_search_time,
                 'malicious_query_classification_time': malicious_query_classification_time,
@@ -343,12 +339,13 @@ def libpages_query():
     response.update({
         'qa_answered': qa_answered,
     })
-    response = calculate_response_times(response, g.start, times)
+
     response = process_response(response, pipeline, logger)
     error_response = handle_error(response, logger)
     if error_response:
         return error_response
 
+    finalize_response(response)
     write_response_data(response)
     return Response(json_dumper(response, pretty=False), status=200, mimetype='application/json')
 
@@ -356,7 +353,7 @@ def libpages_query():
 @app.route("/search", methods=['POST'])
 def db_search_query():
     """Search RAG embeddings. Not logged or for general use."""
-    global stacks, llm, chains
+    global stacks, llm, chains, timings
 
     data = request.json
     query_value = data.get('query')
@@ -368,15 +365,15 @@ def db_search_query():
     logger.info(f"Waiting for {query_lock_type} lock...")
     query_lock_start = cur_timestamp()
     with get_query_lock():
-        query_lock_wait_time = time_since(query_lock_start)
-        logger.info(f"{query_lock_type} lock acquired after {query_lock_wait_time} seconds.")
+        timings['query_lock_wait_time'] = time_since(query_lock_start)
+        logger.info(f"{query_lock_type} lock acquired after {timings['query_lock_wait_time']} seconds.")
 
         if not gpu_exclusive:      
             logger.info("Building Query Stacks...")
             rag_stack_build_start = cur_timestamp()
             stacks = build_rag_stacks(logger)
             stack = stacks[pipeline]
-            rag_stack_build_time = time_since(rag_stack_build_start)
+            timings['rag_stack_build_time'] = time_since(rag_stack_build_start)
 
         search_start = cur_timestamp()
         response = stack.search(query_value).to_dict()
@@ -387,32 +384,46 @@ def db_search_query():
         logger.error(response['error'])
         return Response(json_dumper(response, pretty=False), status=500, mimetype='application/json')    
 
-    response['time'] = {}
-    response['time']['query_lock_wait_time'] = query_lock_wait_time
-    response['time']['rag_stack_build_time'] = rag_stack_build_time
     response['time']['search_time'] = search_time
 
+    finalize_response(response)
     write_response_data(response)
+
     return Response(json_dumper(response, pretty=False), status=200, mimetype='application/json')
+
+# Initializes the timing elements for LLM stacks.
+def init_llm_timings(timings):
+    timings['query_lock_wait_time'] = 0
+    timings['rag_stack_build_time'] = 0
+    timings['total'] = 0
+
+def finalize_response(response):
+    timings['total'] = time_since(g.start)
+    response['timings'] = timings
 
 # API Start-up.
 def start() -> None:
     """Starts the API server."""
-    global stacks, qa_stacks, llm, chains
+    global stacks, qa_stacks, llm, chains, timings
     report_memory_use(logger)
     logger.info("Starting API server...")
+    init_llm_timings(timings)
 
     if gpu_exclusive:
+        query_lock_start = cur_timestamp()
         logger.info("Acquiring GPU lock...")
         gpu_lock.acquire()
         logger.info("GPU lock acquired.")
         signal.signal(signal.SIGINT, release_gpu_lock_and_exit)
+        query_lock_start = cur_timestamp()
+        timings['query_lock_wait_time'] = time_since(query_lock_start)
 
-        logger.info("Building QA Stacks...")
-        qa_stacks = build_qa_stacks(logger)
+        qa_stacks = build_qa_stacks(logger, timings)
 
-        logger.info("Building Query Stacks...")
+        logger.info("Building Rag Stacks...")
+        rag_stack_build_start = cur_timestamp()
         stacks = build_rag_stacks(logger)
+        timings['rag_stack_build_time'] = time_since(rag_stack_build_start)
 
         logger.info("Loading LLM Model...")
         llm = LLM(logger, get_api_llm_config()).get()
@@ -456,11 +467,6 @@ def write_response_data(data: dict) -> None:
     final_filepath = f"{summary_response_dir}/response_{cur_timestamp()}.json"
     with open(final_filepath, 'w') as f:
         f.write(json_dumper(data, pretty=True))
-
-def calculate_response_times(response, start_time, times):
-    response['time'] = times
-    response['time']['total'] = time_since(start_time)
-    return response
 
 def process_response(response, pipeline, logger):
     postprocess_start_time = cur_timestamp()
