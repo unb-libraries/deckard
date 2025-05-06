@@ -25,16 +25,15 @@ def build_qa_stacks(log: Logger, timings: TimingManager) -> dict:
     """
     stacks = {}
     log.info("Building QA Stacks...")
-    qa_stacks_build_start = cur_timestamp()
-    pipelines = get_rag_pipelines()
-    for w in pipelines.values():
-        c = __import__(
-            w['rag']['qa']['stack']['module_name'],
-            fromlist=['']
-        )
-        qas = getattr(c, w['rag']['qa']['stack']['class_name'])
-        stacks[w['name']] = qas(w['rag']['qa'], log)
-    timings['qa_stacks_build_time'] = time_since(qa_stacks_build_start)
+    with timings.time_block('qa_stacks_build_time'):
+        pipelines = get_rag_pipelines()
+        for w in pipelines.values():
+            c = __import__(
+                w['rag']['qa']['stack']['module_name'],
+                fromlist=['']
+            )
+            qas = getattr(c, w['rag']['qa']['stack']['class_name'])
+            stacks[w['name']] = qas(w['rag']['qa'], log)
     return stacks
 
 def query_qa_stack(qa_stack, query_value, chains, timings):
