@@ -15,7 +15,7 @@ from deckard.core.config import get_api_host, get_api_llm_config, get_api_port, 
 from deckard.core.time import cur_timestamp, time_since, TimingManager
 from deckard.core.utils import report_memory_use, gen_uuid
 from deckard.llm import LLM, LLMQuery, ResponseVerifier, MaliciousClassifier, CompoundClassifier, CompoundResponseSummarizer, ResponseSourceExtractor, fail_response
-from deckard.interfaces.services.qa_service import build_qa_stacks, init_qa_service, query_qa_stack
+from deckard.interfaces.services.qa_service import build_qa_stacks, query_qa_stack
 
 
 DECKARD_CMD_STRING = 'api:start'
@@ -107,9 +107,6 @@ def libpages_query():
         'exclusive_mode': gpu_exclusive
     }
 
-    # Service inits.
-    init_qa_service(timings)
-
     # Inits
     chain_build_time = 0
     llm_model_load_time = 0
@@ -131,7 +128,8 @@ def libpages_query():
         logger.info(f"{query_lock_type} lock acquired after {timings['query_lock_wait_time']} seconds.")
 
         if not gpu_exclusive:
-            qa_stacks = build_qa_stacks(logger, timings)
+            with timings.time_block('qa_stacks_build_time'):
+                qa_stacks = build_qa_stacks(logger, timings)
 
             logger.info("Building Query Stacks...")
             rag_stack_build_start = cur_timestamp()
@@ -410,7 +408,10 @@ def start() -> None:
 
         signal.signal(signal.SIGINT, release_gpu_lock_and_exit)
 
-        qa_stacks = build_qa_stacks(logger, timings)
+        with timings.time_block('qa_stacks_build_time'):
+            logger.info("Building QA Stacks...")
+            qa_stacks = build_qa_stacks(logger)
+            logger.info("QA Stacks built.")
 
         logger.info("Building Rag Stacks...")
         rag_stack_build_start = cur_timestamp()

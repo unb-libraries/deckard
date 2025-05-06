@@ -3,18 +3,9 @@ from deckard.core.logger import Logger
 from deckard.core.config import get_rag_pipelines
 
 from deckard.core.config import get_api_llm_config
-from deckard.core.time import cur_timestamp, time_since, TimingManager
+from deckard.core.time import cur_timestamp, time_since
 
-def init_qa_service(timings):
-    """
-    Initializes the timing keys for the QA service in the provided timings dictionary.
-
-    Args:
-        timings (dict): The dictionary to initialize timing keys in.
-    """
-    timings['qa_search_time'] = 0
-
-def build_qa_stacks(log: Logger, timings: TimingManager) -> dict:
+def build_qa_stacks(log: Logger) -> dict:
     """Builds the QA stacks from the configuration.
 
     Args:
@@ -25,15 +16,14 @@ def build_qa_stacks(log: Logger, timings: TimingManager) -> dict:
     """
     stacks = {}
     log.info("Building QA Stacks...")
-    with timings.time_block('qa_stacks_build_time'):
-        pipelines = get_rag_pipelines()
-        for w in pipelines.values():
-            c = __import__(
-                w['rag']['qa']['stack']['module_name'],
-                fromlist=['']
-            )
-            qas = getattr(c, w['rag']['qa']['stack']['class_name'])
-            stacks[w['name']] = qas(w['rag']['qa'], log)
+    pipelines = get_rag_pipelines()
+    for w in pipelines.values():
+        c = __import__(
+            w['rag']['qa']['stack']['module_name'],
+            fromlist=['']
+        )
+        qas = getattr(c, w['rag']['qa']['stack']['class_name'])
+        stacks[w['name']] = qas(w['rag']['qa'], log)
     return stacks
 
 def query_qa_stack(qa_stack, query_value, chains, timings):
