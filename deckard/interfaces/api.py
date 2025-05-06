@@ -12,10 +12,11 @@ from waitress import serve as waitress_serve
 from deckard.core import get_logger, json_dumper, load_class, list_of_dicts_to_dict, get_api_gpu_exclusive_mode
 from deckard.core.builders import build_llm_chains, build_rag_stacks
 from deckard.core.config import get_api_host, get_api_llm_config, get_api_port, get_data_dir, get_gpu_lockfile, get_rag_pipeline
-from deckard.core.time import cur_timestamp, time_since
+from deckard.core.time import cur_timestamp, time_since, TimingManager
 from deckard.core.utils import report_memory_use, gen_uuid
 from deckard.llm import LLM, LLMQuery, ResponseVerifier, MaliciousClassifier, CompoundClassifier, CompoundResponseSummarizer, ResponseSourceExtractor, fail_response
 from deckard.interfaces.services.qa_service import build_qa_stacks, init_qa_service, query_qa_stack
+
 
 DECKARD_CMD_STRING = 'api:start'
 
@@ -31,7 +32,7 @@ qa_stacks = None
 stacks = None
 llm = None
 chains = None
-timings = {}
+timings = TimingManager()
 
 @app.before_request
 def before_request():
@@ -391,15 +392,8 @@ def db_search_query():
 
     return Response(json_dumper(response, pretty=False), status=200, mimetype='application/json')
 
-# Initializes the timing elements for LLM stacks.
-def init_llm_timings(timings):
-    timings['query_lock_wait_time'] = 0
-    timings['rag_stack_build_time'] = 0
-    timings['total'] = 0
-
 def finalize_response(response):
-    timings['total'] = time_since(g.start)
-    response['timings'] = timings
+    response['timings'] = timings.get_timings()
 
 # API Start-up.
 def start() -> None:
@@ -407,16 +401,14 @@ def start() -> None:
     global stacks, qa_stacks, llm, chains, timings
     report_memory_use(logger)
     logger.info("Starting API server...")
-    init_llm_timings(timings)
 
     if gpu_exclusive:
-        query_lock_start = cur_timestamp()
-        logger.info("Acquiring GPU lock...")
-        gpu_lock.acquire()
-        logger.info("GPU lock acquired.")
+        with TimingManager().time_block('query_lock_wait_time'):
+            logger.info("Acquiring GPU lock...")
+            gpu_lock.acquire()
+            logger.info("GPU lock acquired.")
+
         signal.signal(signal.SIGINT, release_gpu_lock_and_exit)
-        query_lock_start = cur_timestamp()
-        timings['query_lock_wait_time'] = time_since(query_lock_start)
 
         qa_stacks = build_qa_stacks(logger, timings)
 
