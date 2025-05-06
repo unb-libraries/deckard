@@ -403,7 +403,7 @@ def start() -> None:
     logger.info("Starting API server...")
 
     if gpu_exclusive:
-        with TimingManager().time_block('query_lock_wait_time'):
+        with timings.time_block('query_lock_wait_time'):
             logger.info("Acquiring GPU lock...")
             gpu_lock.acquire()
             logger.info("GPU lock acquired.")

@@ -3,7 +3,7 @@ from deckard.core.logger import Logger
 from deckard.core.config import get_rag_pipelines
 
 from deckard.core.config import get_api_llm_config
-from deckard.core.time import cur_timestamp, time_since
+from deckard.core.time import cur_timestamp, time_since, TimingManager
 
 def init_qa_service(timings):
     """
@@ -14,7 +14,7 @@ def init_qa_service(timings):
     """
     timings['qa_search_time'] = 0
 
-def build_qa_stacks(log: Logger, timings: dict) -> dict:
+def build_qa_stacks(log: Logger, timings: TimingManager) -> dict:
     """Builds the QA stacks from the configuration.
 
     Args:
