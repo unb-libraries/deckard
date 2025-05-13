@@ -15,8 +15,7 @@ from deckard.core.config import get_api_host, get_api_llm_config, get_api_port, 
 from deckard.core.time import cur_timestamp, time_since, TimingManager
 from deckard.core.utils import report_memory_use, gen_uuid
 from deckard.llm import LLM, LLMQuery, ResponseVerifier, MaliciousClassifier, CompoundClassifier, CompoundResponseSummarizer, ResponseSourceExtractor, fail_response
-from deckard.interfaces.services.qa_service import build_qa_stacks, query_qa_stack
-
+from deckard.interfaces.services import build_qa_stacks, query_qa_stack
 
 DECKARD_CMD_STRING = 'api:start'
 
@@ -155,9 +154,8 @@ def libpages_query():
 
         # QA Search, Avoid RAG Stack if Possible
         if qa_stack.has_questions():
-            logger.info("Searching QA Stack...")
-            qa_search_start = cur_timestamp()
-            qa_response, qa_search_time, source_urls = query_qa_stack(qa_stack, query_value, chains, logger)
+            with timings.time_block('qa_query_time'):
+                qa_response, qa_search_time, source_urls = query_qa_stack(qa_stack, query_value, chains, logger)
             response['qa_response'] = qa_response
             response['qa_search_time'] = qa_search_time
             response['qa_response_metadata'] = qa_response['metadata']

@@ -26,7 +26,7 @@ def build_qa_stacks(log: Logger) -> dict:
         stacks[w['name']] = qas(w['rag']['qa'], log)
     return stacks
 
-def query_qa_stack(qa_stack, query_value, chains, timings):
+def query_qa_stack(qa_stack, query_value, chains, log):
     """
     Queries the QA stack and returns the response and metadata.
 
@@ -34,18 +34,13 @@ def query_qa_stack(qa_stack, query_value, chains, timings):
         qa_stack: The QA stack to query.
         query_value: The query string.
         chains: The chains dictionary.
-        timings: The dictionary to update timing values.
+        log: The logger for the QA stack.
 
     Returns:
         tuple: (qa_response, source_urls)
     """
-    logger = timings.get('logger')
-    if logger:
-        logger.info("Searching QA Stack...")
-
-    qa_search_start = cur_timestamp()
+    log.info(f"Querying QA Stack: {qa_stack.name}")
     qa_response = qa_stack.query(query_value, chains['qa'], get_api_llm_config())
-    timings['qa_search_time'] = time_since(qa_search_start)
 
     source_urls = []
     if 'links' in qa_response:
