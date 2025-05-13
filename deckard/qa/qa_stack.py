@@ -13,6 +13,7 @@ class QAStack:
     ) -> None:
         self.log = log
         self.config = config
+        self.name = config['name']
         self.log.info("Building QA Stack for configuration: %s", config['name'])
         self.init_query()
         self._init_qa_pipeline_components()
