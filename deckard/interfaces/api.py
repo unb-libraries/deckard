@@ -4,6 +4,65 @@ import sys
 
 from filelock import FileLock
 from flask import Flask, Response, g, request
+
+class ApiResponse:
+    def __init__(self, *, query=None, pipeline=None, exclusive_mode=None, timings=None, logger=None):
+        self.timings = timings
+        self.logger = logger
+        self.response = {
+            'id': gen_uuid(),
+            'query': query,
+            'pipeline': pipeline,
+            'exclusive_mode': exclusive_mode
+        }
+        # Start request_time timing on construction
+        if self.timings:
+            self.timings.start_timing(['request_time'])
+
+    @classmethod
+    def new(cls, *, query=None, pipeline=None, exclusive_mode=None, timings=None, logger=None):
+        return cls(query=query, pipeline=pipeline, exclusive_mode=exclusive_mode, timings=timings, logger=logger)
+
+    def update(self, d):
+        self.response.update(d)
+
+    def handle_error(self):
+        if 'error' in self.response:
+            self.logger.error("Error in LLM query:")
+            self.logger.error(self.response['error'])
+            self.response['is_answer'] = False
+            return Response(json_dumper(self.response, pretty=False), status=500, mimetype='application/json')
+        return None
+
+    def render(self):
+        # Handle error first
+        error_response = self.handle_error()
+        if error_response:
+            return error_response
+        # Finalize request_time timing before rendering
+        if self.timings:
+            self.timings.finalize_timing(['request_time'])
+        self.response['timings'] = self.timings.get_timings() if self.timings else {}
+        finalize_response(self.response)
+        write_response_data(self.response)
+        return Response(json_dumper(self.response, pretty=False), status=200, mimetype='application/json')
+
+    # Timing wrapper methods
+    def start_timing(self, *args, **kwargs):
+        return self.timings.start_timing(*args, **kwargs)
+
+    def time_block(self, *args, **kwargs):
+        return self.timings.time_block(*args, **kwargs)
+
+    def compound_time_block(self, *args, **kwargs):
+        return self.timings.compound_time_block(*args, **kwargs)
+
+    def reset_timing(self, *args, **kwargs):
+        return self.timings.reset_timing(*args, **kwargs)
+
+    def finalize_timing(self, *args, **kwargs):
+        return self.timings.finalize_timing(*args, **kwargs)
+
 from logging import Logger
 from os import makedirs
 from threading import Lock
@@ -99,18 +158,18 @@ def libpages_query():
     data = request.json
     query_value = data.get('query')
     pipeline = data.get('pipeline')
-    response = {
-        'id': gen_uuid(),
-        'query': query_value,
-        'pipeline': pipeline,
-        'exclusive_mode': gpu_exclusive
-    }
-
+    response = ApiResponse.new(
+        query=query_value,
+        pipeline=pipeline,
+        exclusive_mode=gpu_exclusive,
+        timings=timings,
+        logger=logger
+    )
 
     if not gpu_exclusive:
-        timings.reset_timing()
+        response.reset_timing()
     else:
-        timings.reset_timing(
+        response.reset_timing(
             keep_ids=[
                 'qa_stacks_build_time',
                 'rag_stack_build_time',
@@ -118,33 +177,29 @@ def libpages_query():
                 'chain_build_time',
             ]
         )
-    timings.start_timing(['request_time'])
 
     # Inits
     response_was_summarized = False
     query_lock_type = get_query_lock_type()
     logger.info(f"Waiting for {query_lock_type} lock...")
-    timings.start_timing(['query_lock_wait_time'])
+    response.start_timing(['query_lock_wait_time'])
 
     with get_query_lock():
-        timings.finalize_timing(['query_lock_wait_time'])
+        response.finalize_timing(['query_lock_wait_time'])
         logger.info(f"{query_lock_type} lock acquired.")
 
         if not gpu_exclusive:
-            with timings.time_block('qa_stacks_build_time'):
-                qa_stacks = build_qa_stacks(logger, timings)
+            with response.time_block('qa_stacks_build_time'):
+                qa_stacks = build_qa_stacks(logger, response.timings)
 
-            with timings.time_block('rag_stack_build_time'):
-                # @TODO: Move to RAG query service.
+            with response.time_block('rag_stack_build_time'):
                 stacks = build_rag_stacks(logger)
 
-            with timings.time_block('llm_model_load_time'):
-                # @TODO: Move to inference 'provider'.
+            with response.time_block('llm_model_load_time'):
                 logger.info("Loading LLM Model...")
                 llm = LLM(logger, get_api_llm_config()).get()
 
-            with timings.time_block('Chain_build_time'):
-                # @TODO: Move to inference 'provider'.
+            with response.time_block('Chain_build_time'):
                 logger.info("Building Query Chains...")
                 chains = build_llm_chains(llm)
 
@@ -157,10 +212,9 @@ def libpages_query():
 
         # QA Search, Avoid RAG Stack if Possible
         if qa_stack.has_questions():
-            with timings.time_block('qa_query_time'):
+            with response.time_block('qa_query_time'):
                 qa_response, source_urls = query_qa_stack(qa_stack, query_value, chains, logger)
-            response['qa_response'] = qa_response
-            response['qa_response_metadata'] = qa_response['metadata']
+            response.update({'qa_response': qa_response, 'qa_response_metadata': qa_response['metadata']})
 
             if qa_response['has_response']:
                 logger.info("QA Stack has answer...")
@@ -170,11 +224,11 @@ def libpages_query():
                     'response': qa_response['response'],
                     'is_answer': True,
                     'qa_response_used': True,
-                    'qa_response_metadata': qa_response['metadata']
+                    'qa_response_metadata': qa_response['metadata'],
+                    'sources_found': True,
+                    'sources_reason': "QA Stack",
+                    'source_urls': source_urls
                 })
-                response['sources_found'] = True
-                response['sources_reason'] = "QA Stack"
-                response['source_urls'] = source_urls
             else:
                 logger.info("QA Stack has no answer...")
                 response.update({
@@ -183,13 +237,11 @@ def libpages_query():
                 })
         else:
             logger.info("QA stack has no questions...")
-            response.update({
-                'qa_response_used': False,
-            })
-        
+            response.update({'qa_response_used': False})
+
         if not qa_answered:
             # Malicious Classification
-            with timings.time_block('malicious_query_classification_time'):
+            with response.time_block('malicious_query_classification_time'):
                 logger.info("Classifying Maliciousness...")
                 malicious_classifier = MaliciousClassifier(query_value, chains['malicious'], logger)
                 classification, reason, classification_data = malicious_classifier.question_has_malicious_intent()
@@ -210,12 +262,12 @@ def libpages_query():
                 logger.info("Classification: Safe...")
 
                 # Build LLM Query
-                with timings.time_block('query_build_time'):
+                with response.time_block('query_build_time'):
                     logger.info("Building LLM Query Object...")
-                    llm_query = LLMQuery(response['id'], stack, pipeline, data.get('client'), get_api_llm_config(), logger)
+                    llm_query = LLMQuery(response.response['id'], stack, pipeline, data.get('client'), get_api_llm_config(), logger)
 
                 # Compound Query Extraction
-                with timings.time_block('compound_query_classification_time'):
+                with response.time_block('compound_query_classification_time'):
                     logger.info("Classifying Compound Query...")
                     compound_classifier = CompoundClassifier(query_value, chains['compound'], logger)
                     classified_compounds, classifier_response, reason = compound_classifier.explode_query()
@@ -227,9 +279,7 @@ def libpages_query():
                         'compound_query_classification_success': False,
                         'compound_query_classification_reason': reason
                     })
-                    queries_to_infer = {
-                        '1': query_value
-                    }
+                    queries_to_infer = {'1': query_value}
                 else:
                     logger.info("Compound Classification Succeeded...")
                     response.update({
@@ -239,12 +289,10 @@ def libpages_query():
                     })
                     queries_to_infer = classified_compounds['queries']
 
-                response.update({
-                    'queries_to_infer': queries_to_infer
-                })
+                response.update({'queries_to_infer': queries_to_infer})
 
                 # Iterate through all queries to infer
-                with timings.compound_time_block('llm_query_time'):
+                with response.compound_time_block('llm_query_time'):
                     for query_value in queries_to_infer.values():
                         constructed_query = construct_given_that_query(llm_inferences, query_value)
 
@@ -255,37 +303,37 @@ def libpages_query():
 
                         # Response Validity
                         logger.info("Determining if response answers question...")
-                        response_value = response['response']
+                        response_value = response.response['response']
                         verifier = ResponseVerifier(constructed_query, response_value, chains['chain-verify-response'], logger)
                         is_answer, reason, answer_data = verifier.response_answers_question()
-                        llm_inferences.append(
-                            {
-                                'query': query_value,
-                                'constructed_query': constructed_query,
-                                'response': response_value,
-                                'is_answer': is_answer,
-                                'not_answer_reason': None if is_answer else reason,
-                                'answer_data': answer_data,
-                                'chunks_used': response['metadata']['contextbuilder']['chunks_used']
-                            }
-                        )
-                        timings.increment_compound_timing('llm_query_time')
+                        llm_inferences.append({
+                            'query': query_value,
+                            'constructed_query': constructed_query,
+                            'response': response_value,
+                            'is_answer': is_answer,
+                            'not_answer_reason': None if is_answer else reason,
+                            'answer_data': answer_data,
+                            'chunks_used': response.response['metadata']['contextbuilder']['chunks_used']
+                        })
+                        response.timings.increment_compound_timing('llm_query_time')
 
-            with timings.time_block('summarizer_query_time'):
+            with response.time_block('summarizer_query_time'):
                 response_summarizer = CompoundResponseSummarizer(chains['summarizer'], logger)
                 final_response, response_was_summarized, has_valid_answers = response_summarizer.summarize(llm_inferences)
-                response['source_urls'] = []
+                response.update({'source_urls': []})
 
             if has_valid_answers:
-                with timings.time_block('sources_query_time'):
+                with response.time_block('sources_query_time'):
                     chunks_used = []
                     for inference in llm_inferences:
                         chunks_used.extend(inference['chunks_used'])
                     response_sources = ResponseSourceExtractor(chains['sources'], logger)
                     sources_found, sources_reason, source_urls = response_sources.get_sources(query_value, final_response, chunks_used)
-                    response['sources_found'] = sources_found
-                    response['sources_reason'] = sources_reason
-                    response['source_urls'] = source_urls['source_urls']
+                    response.update({
+                        'sources_found': sources_found,
+                        'sources_reason': sources_reason,
+                        'source_urls': source_urls['source_urls']
+                    })
 
             response.update({
                 'query': data.get('query'),
@@ -300,17 +348,10 @@ def libpages_query():
         'response_was_summarized': response_was_summarized,
     })
 
-    with timings.time_block('postprocess_time'):
-        response = process_response(response, pipeline, logger)
-    timings.finalize_timing(['request_time'])
+    with response.time_block('postprocess_time'):
+        response.response = process_response(response.response, pipeline, logger)
 
-    error_response = handle_error(response, logger)
-    if error_response:
-        return error_response
-
-    finalize_response(response)
-    write_response_data(response)
-    return Response(json_dumper(response, pretty=False), status=200, mimetype='application/json')
+    return response.render()
 
 
 @app.route("/search", methods=['POST'])
@@ -435,13 +476,6 @@ def process_response(response, pipeline, logger):
         response['response'] = response_processor.get_processed_response()
     return response
 
-def handle_error(response, logger):
-    if 'error' in response:
-        logger.error("Error in LLM query:")
-        logger.error(response['error'])
-        response['is_answer'] = False
-        return Response(json_dumper(response, pretty=False), status=500, mimetype='application/json')
-    return None
 
 def construct_given_that_query(history: list, new_query: str) -> str:
     """
