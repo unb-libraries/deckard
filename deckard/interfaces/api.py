@@ -97,18 +97,11 @@ def libpages_query():
     data = request.json
     query_value = data.get('query')
     pipeline = data.get('pipeline')
-    response = ApiResponse.new(
-        query=query_value,
-        pipeline=pipeline,
-        exclusive_mode=gpu_exclusive,
-        timings=timings,
-        logger=logger
-    )
 
     if not gpu_exclusive:
-        response.reset_timing()
+        timings.reset_timing()
     else:
-        response.reset_timing(
+        timings.reset_timing(
             keep_ids=[
                 'qa_stacks_build_time',
                 'rag_stack_build_time',
@@ -118,6 +111,13 @@ def libpages_query():
         )
 
     # Inits
+    response = ApiResponse.new(
+        query=query_value,
+        pipeline=pipeline,
+        exclusive_mode=gpu_exclusive,
+        timings=timings,
+        logger=logger
+    )
     response_was_summarized = False
     query_lock_type = get_query_lock_type()
     logger.info(f"Waiting for {query_lock_type} lock...")

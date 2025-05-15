@@ -18,7 +18,8 @@ class ApiResponse:
         }
 
         if self.timings:
-            self.timings.start_timing(['request_time'])
+            print("Starting request timing")
+            self.start_timing(['request_time'])
 
     @classmethod
     def new(cls, *, query=None, pipeline=None, exclusive_mode=None, timings=None, logger=None):
@@ -55,7 +56,8 @@ class ApiResponse:
         self.process_response()
 
         if self.timings:
-            pass #self.timings.finalize_timing(['request_time'])
+            self.finalize_timing(['request_time'])
+
         self.response['timings'] = self.timings.get_timings() if self.timings else {}
 
         self.finalize()
