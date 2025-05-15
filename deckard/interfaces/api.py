@@ -4,77 +4,18 @@ import sys
 
 from filelock import FileLock
 from flask import Flask, Response, g, request
-
-class ApiResponse:
-    def __init__(self, *, query=None, pipeline=None, exclusive_mode=None, timings=None, logger=None):
-        self.timings = timings
-        self.logger = logger
-        self.response = {
-            'id': gen_uuid(),
-            'query': query,
-            'pipeline': pipeline,
-            'exclusive_mode': exclusive_mode
-        }
-        # Start request_time timing on construction
-        if self.timings:
-            self.timings.start_timing(['request_time'])
-
-    @classmethod
-    def new(cls, *, query=None, pipeline=None, exclusive_mode=None, timings=None, logger=None):
-        return cls(query=query, pipeline=pipeline, exclusive_mode=exclusive_mode, timings=timings, logger=logger)
-
-    def update(self, d):
-        self.response.update(d)
-
-    def handle_error(self):
-        if 'error' in self.response:
-            self.logger.error("Error in LLM query:")
-            self.logger.error(self.response['error'])
-            self.response['is_answer'] = False
-            return Response(json_dumper(self.response, pretty=False), status=500, mimetype='application/json')
-        return None
-
-    def render(self):
-        # Handle error first
-        error_response = self.handle_error()
-        if error_response:
-            return error_response
-        # Finalize request_time timing before rendering
-        if self.timings:
-            self.timings.finalize_timing(['request_time'])
-        self.response['timings'] = self.timings.get_timings() if self.timings else {}
-        finalize_response(self.response)
-        write_response_data(self.response)
-        return Response(json_dumper(self.response, pretty=False), status=200, mimetype='application/json')
-
-    # Timing wrapper methods
-    def start_timing(self, *args, **kwargs):
-        return self.timings.start_timing(*args, **kwargs)
-
-    def time_block(self, *args, **kwargs):
-        return self.timings.time_block(*args, **kwargs)
-
-    def compound_time_block(self, *args, **kwargs):
-        return self.timings.compound_time_block(*args, **kwargs)
-
-    def reset_timing(self, *args, **kwargs):
-        return self.timings.reset_timing(*args, **kwargs)
-
-    def finalize_timing(self, *args, **kwargs):
-        return self.timings.finalize_timing(*args, **kwargs)
-
 from logging import Logger
-from os import makedirs
 from threading import Lock
 from waitress import serve as waitress_serve
 
-from deckard.core import get_logger, json_dumper, load_class, list_of_dicts_to_dict, get_api_gpu_exclusive_mode
+from deckard.core import get_logger, json_dumper, list_of_dicts_to_dict, get_api_gpu_exclusive_mode
 from deckard.core.builders import build_llm_chains, build_rag_stacks
-from deckard.core.config import get_api_host, get_api_llm_config, get_api_port, get_data_dir, get_gpu_lockfile, get_rag_pipeline
-from deckard.core.time import cur_timestamp, time_since, TimingManager
-from deckard.core.utils import report_memory_use, gen_uuid
+from deckard.core.config import get_api_host, get_api_llm_config, get_api_port, get_gpu_lockfile
+from deckard.core.time import cur_timestamp, TimingManager
+from deckard.core.utils import report_memory_use
 from deckard.llm import LLM, LLMQuery, ResponseVerifier, MaliciousClassifier, CompoundClassifier, CompoundResponseSummarizer, ResponseSourceExtractor, fail_response
 from deckard.interfaces.services import build_qa_stacks, query_qa_stack
+from deckard.response import ApiResponse
 
 DECKARD_CMD_STRING = 'api:start'
 
@@ -127,9 +68,7 @@ def rawquery():
 
     query_lock_type = get_query_lock_type()
     logger.info(f"Waiting for {query_lock_type} lock...")
-    timings.start_timing(['query_lock_wait_time'])
     with get_query_lock():
-        timings.finalize_timing(['query_lock_wait_time'])
         logger.info(f"{query_lock_type} lock acquired.")
 
         if not gpu_exclusive:
@@ -348,9 +287,6 @@ def libpages_query():
         'response_was_summarized': response_was_summarized,
     })
 
-    with response.time_block('postprocess_time'):
-        response.response = process_response(response.response, pipeline, logger)
-
     return response.render()
 
 
@@ -367,37 +303,25 @@ def db_search_query():
 
     query_lock_type = get_query_lock_type()
     logger.info(f"Waiting for {query_lock_type} lock...")
-    timings.start_timing(['query_lock_wait_time'])
+
     with get_query_lock():
-        timings.finalize_timing(['query_lock_wait_time'])
         logger.info(f"{query_lock_type}.")
 
         if not gpu_exclusive:
-            with timings.time_block('rag_stack_build_time'):
-                # @TODO: Move to RAG query service.
-                logger.info("Building Query Stacks...")
-                stacks = build_rag_stacks(logger)            
+            logger.info("Building Query Stacks...")
+            stacks = build_rag_stacks(logger)            
 
         stack = stacks[pipeline]
-
-        with timings.time_block('embedding_search_time'):
-            logger.info("Searching embeddings...")
-            response = stack.search(query_value).to_dict()
+        logger.info("Searching embeddings...")
+        response = stack.search(query_value).to_dict()
 
     if 'error' in response:
-        logger.error("Error summarizing document:")
+        logger.error("Error searching RAG embeddings:")
         logger.error(response['error'])
         return Response(json_dumper(response, pretty=False), status=500, mimetype='application/json')    
 
-    response['time']['search_time'] = search_time
-
-    finalize_response(response)
-    write_response_data(response)
-
     return Response(json_dumper(response, pretty=False), status=200, mimetype='application/json')
 
-def finalize_response(response):
-    response['timings'] = timings.get_timings()
 
 # API Start-up.
 def start() -> None:
@@ -459,23 +383,6 @@ def api_server_up() -> bool:
     a_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     location = (get_api_host(), get_api_port())
     return a_socket.connect_ex(location) == 0
-
-def write_response_data(data: dict) -> None:
-    """Writes the response data to a file."""
-    data_dir = get_data_dir()
-    summary_response_dir = f"{data_dir}/deckard_responses"
-    makedirs(summary_response_dir, exist_ok=True)
-    final_filepath = f"{summary_response_dir}/response_{cur_timestamp()}.json"
-    with open(final_filepath, 'w') as f:
-        f.write(json_dumper(data, pretty=True))
-
-def process_response(response, pipeline, logger):
-    if response['is_answer'] and response['qa_answered'] != True:
-        config = get_rag_pipeline(pipeline)['rag']
-        response_processor = load_class(config['response_processor']['module_name'], config['response_processor']['class_name'], [response['response'], logger])
-        response['response'] = response_processor.get_processed_response()
-    return response
-
 
 def construct_given_that_query(history: list, new_query: str) -> str:
     """
