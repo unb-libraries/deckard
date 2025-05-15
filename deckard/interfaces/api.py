@@ -118,6 +118,8 @@ def libpages_query():
         timings=timings,
         logger=logger
     )
+    response.start_timing(['request_time'])
+
     response_was_summarized = False
     query_lock_type = get_query_lock_type()
     logger.info(f"Waiting for {query_lock_type} lock...")
@@ -287,6 +289,7 @@ def libpages_query():
         'response_was_summarized': response_was_summarized,
     })
 
+    response.finalize_timing(['request_time'])
     return response.render()
 
 

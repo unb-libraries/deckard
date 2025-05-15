@@ -17,10 +17,6 @@ class ApiResponse:
             'exclusive_mode': exclusive_mode
         }
 
-        if self.timings:
-            print("Starting request timing")
-            self.start_timing(['request_time'])
-
     @classmethod
     def new(cls, *, query=None, pipeline=None, exclusive_mode=None, timings=None, logger=None):
         return cls(query=query, pipeline=pipeline, exclusive_mode=exclusive_mode, timings=timings, logger=logger)
@@ -54,10 +50,6 @@ class ApiResponse:
             return error_response
 
         self.process_response()
-
-        if self.timings:
-            self.finalize_timing(['request_time'])
-
         self.response['timings'] = self.timings.get_timings() if self.timings else {}
 
         self.finalize()
